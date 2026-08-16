@@ -14,6 +14,8 @@ xcuserdata/
 
 # Trailer render output
 Trailer/renders/
+*.blend1
+*.blend2
 
 # macOS
 .DS_Store
