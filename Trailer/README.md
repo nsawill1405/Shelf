@@ -2,7 +2,9 @@
 
 Blender 5, 10 seconds at 24 fps. Open `ShelfTrailer.blend`.
 
-Walnut desk, plaster wall, loft HDRI, and a floating Shelf panel mapped with real UI frames. Unique photos, PDFs, code, links, and colour chips fly in across the shot — the interface also changes so it is not the same six cards the whole time.
+Walnut desk, plaster walls, a MacBook that opens and closes, and a floating Shelf panel painted at the real 520×620 liquid-glass layout (Inbox / search / Finder tabs / 138pt cards / ⌥ Space).
+
+The camera starts on the closed laptop, the lid opens, Shelf summons, then the camera turns around the pair. Depth of field is off. UI frames swap Inbox → Work → Personal → hover.
 
 ## Timeline
 
