@@ -32,13 +32,18 @@ extension View {
     func shelfCardChrome(isSelected: Bool, isHovering: Bool) -> some View {
         self
             .background(
-                RoundedRectangle(cornerRadius: Design.cardRadius, style: .continuous)
-                    .fill(Design.cardFill(isSelected: isSelected))
+                Design.cardShape.fill(Color.primary.opacity(isHovering && !isSelected ? 0.06 : 0))
             )
             .overlay(
-                RoundedRectangle(cornerRadius: Design.cardRadius, style: .continuous)
-                    .strokeBorder(Design.cardStroke(isSelected: isSelected, isHovering: isHovering), lineWidth: isSelected ? 1.5 : 1)
+                Design.cardShape
+                    .strokeBorder(Color.accentColor, lineWidth: isSelected ? 1.5 : 0)
             )
-            .shadow(color: .black.opacity(isHovering ? 0.18 : 0.08), radius: isHovering ? 10 : 4, y: isHovering ? 4 : 2)
+    }
+
+    /// Force the focused window treatment. Glass and controls read these.
+    func alwaysActiveGlass() -> some View {
+        self
+            .environment(\.controlActiveState, .key)
+            .environment(\.backgroundProminence, .standard)
     }
 }

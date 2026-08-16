@@ -16,6 +16,9 @@ final class StoreManager: ObservableObject {
     private init() {}
 
     func configure() {
+        if AppConfig.testingUnlockPro {
+            isPro = true
+        }
         let key = AppConfig.revenueCatAPIKey.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !key.isEmpty, key.count > 10, !key.hasPrefix("YOUR_") else { return }
         Purchases.logLevel = .warn
@@ -28,7 +31,8 @@ final class StoreManager: ObservableObject {
         guard isConfigured else { return }
         do {
             let info = try await Purchases.shared.customerInfo()
-            isPro = info.entitlements[AppConfig.revenueCatProEntitlement]?.isActive == true
+            isPro = AppConfig.testingUnlockPro
+                || info.entitlements[AppConfig.revenueCatProEntitlement]?.isActive == true
             let offers = try await Purchases.shared.offerings()
             offerings = offers
         } catch {
@@ -42,7 +46,8 @@ final class StoreManager: ObservableObject {
         defer { isPurchasing = false }
         do {
             let result = try await Purchases.shared.purchase(package: package)
-            isPro = result.customerInfo.entitlements[AppConfig.revenueCatProEntitlement]?.isActive == true
+            isPro = AppConfig.testingUnlockPro
+                || result.customerInfo.entitlements[AppConfig.revenueCatProEntitlement]?.isActive == true
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -54,7 +59,8 @@ final class StoreManager: ObservableObject {
         defer { isPurchasing = false }
         do {
             let info = try await Purchases.shared.restorePurchases()
-            isPro = info.entitlements[AppConfig.revenueCatProEntitlement]?.isActive == true
+            isPro = AppConfig.testingUnlockPro
+                || info.entitlements[AppConfig.revenueCatProEntitlement]?.isActive == true
         } catch {
             errorMessage = error.localizedDescription
         }

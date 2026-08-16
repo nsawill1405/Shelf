@@ -14,7 +14,7 @@ struct PaywallView: View {
         }
         .padding(28)
         .frame(minWidth: 420, minHeight: 560)
-        .background(.ultraThinMaterial)
+        .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
     }
 
     private var header: some View {

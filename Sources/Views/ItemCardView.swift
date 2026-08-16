@@ -9,6 +9,8 @@ struct ItemCardView: View {
 
     @State private var image: NSImage?
     @State private var isHovering = false
+    @State private var showDescription = false
+    @State private var descriptionTask: Task<Void, Never>?
 
     private var isSelected: Bool { appState.selectedItemIDs.contains(item.id) }
     private var isSettling: Bool { appState.settlingItemIDs.contains(item.id) }
@@ -19,12 +21,12 @@ struct ItemCardView: View {
         return 1
     }
 
-    private var dragValue: ShelfItemTransferable {
+    private var dragItems: [ShelfItem] {
         if groupCount > 1, let shelf = appState.activeShelf {
             let selected = shelf.sortedItems.filter { appState.selectedItemIDs.contains($0.id) }
-            if selected.count > 1 { return ShelfItemTransferable(items: selected) }
+            if selected.count > 1 { return selected }
         }
-        return ShelfItemTransferable(item: item)
+        return [item]
     }
 
     var body: some View {
@@ -33,14 +35,23 @@ struct ItemCardView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             Text(item.title)
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Design.Ink.body)
                 .lineLimit(1)
                 .truncationMode(.middle)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(10)
         .frame(width: compact ? 120 : Design.cardWidth, height: compact ? 128 : Design.cardHeight)
+        .contentShape(Design.cardShape)
         .shelfCardChrome(isSelected: isSelected, isHovering: isHovering)
+        .overlay { HoverSensor(isHovering: $isHovering) }
+        .overlay {
+            ItemDragHandle(
+                payloads: dragItems.map(DragPayload.init),
+                onClick: select,
+                onDoubleClick: { ShelfActions.open(item) }
+            )
+        }
         .overlay(alignment: .topLeading) {
             if groupCount > 1 {
                 stackBadge
@@ -54,26 +65,19 @@ struct ItemCardView: View {
                     .padding(7)
             }
         }
-        .scaleEffect(scale)
+        .overlay(alignment: .bottom) {
+            if showDescription {
+                ItemDescriptionCard(item: item)
+                    .offset(y: Design.cardHeight / 2 + 4)
+            }
+        }
+        .zIndex(isHovering || isSelected ? 10 : 0)
         .offset(y: isSettling && !reduceMotion ? -10 : 0)
-        .rotationEffect(.degrees(isHovering && groupCount > 1 && !reduceMotion ? -1.4 : 0))
-        .animation(reduceMotion ? .easeOut(duration: 0.12) : Design.spring, value: isHovering)
         .animation(reduceMotion ? nil : Design.settle, value: isSettling)
-        .onHover { hovering in
-            isHovering = hovering
+        .onChange(of: isHovering) {
+            handleHoverChange()
         }
-        .onTapGesture { select() }
-        .onTapGesture(count: 2) { ShelfActions.open(item) }
         .contextMenu { contextMenu }
-        .draggable(dragValue) {
-            dragPreview
-        }
-        .simultaneousGesture(
-            DragGesture(minimumDistance: 6)
-                .onChanged { _ in
-                    PanelController.shared.itemDidBeginExternalDrag()
-                }
-        )
         .onDrop(of: [.shelfInternalItem], isTargeted: nil) { providers in
             handleReorder(providers)
             return true
@@ -83,12 +87,6 @@ struct ItemCardView: View {
         .accessibilityLabel("\(item.title), \(item.type.displayName)")
         .accessibilityAddTraits(isSelected ? .isSelected : [])
         .accessibilityHint("Double-click to open. Space to Quick Look.")
-    }
-
-    private var scale: CGFloat {
-        if isSettling && !reduceMotion { return 0.92 }
-        if isHovering { return 1.03 }
-        return 1
     }
 
     private var stackBadge: some View {
@@ -106,30 +104,6 @@ struct ItemCardView: View {
         }
         .padding(6)
         .accessibilityLabel("\(groupCount) selected")
-    }
-
-    @ViewBuilder
-    private var dragPreview: some View {
-        if groupCount > 1 {
-            ZStack {
-                ForEach(0..<min(groupCount, 3), id: \.self) { index in
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .fill(.regularMaterial)
-                        .frame(width: 92, height: 100)
-                        .rotationEffect(.degrees(Double(index) * 6 - 4))
-                        .offset(x: CGFloat(index) * 6, y: CGFloat(index) * 4)
-                }
-                Image(systemName: "square.stack.3d.up.fill")
-                    .font(.title2)
-                    .foregroundStyle(Color.accentColor)
-            }
-            .frame(width: 120, height: 120)
-        } else {
-            thumbnail
-                .frame(width: 96, height: 96)
-                .padding(8)
-                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-        }
     }
 
     // MARK: - Thumbnail
@@ -164,10 +138,11 @@ struct ItemCardView: View {
                     .foregroundStyle(Color.accentColor)
                 Text(host ?? "Link")
                     .font(.caption.weight(.semibold))
+                    .foregroundStyle(Design.Ink.title)
                     .lineLimit(1)
                 Text(item.sourceURL ?? item.contentText ?? "")
                     .font(.caption2)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Design.Ink.body)
                     .lineLimit(2)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -185,7 +160,7 @@ struct ItemCardView: View {
                 }
                 Text(item.type.displayName)
                     .font(.caption2)
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(Design.Ink.quiet)
             }
         case .code:
             VStack(alignment: .leading, spacing: 6) {
@@ -194,7 +169,7 @@ struct ItemCardView: View {
                     .foregroundStyle(Color.accentColor)
                 Text(item.contentText ?? item.title)
                     .font(.system(size: 9, design: .monospaced))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Design.Ink.body)
                     .lineLimit(6)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
@@ -205,14 +180,29 @@ struct ItemCardView: View {
             VStack(alignment: .leading, spacing: 6) {
                 Image(systemName: item.type.systemImage)
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Design.Ink.body)
                 Text(item.contentText ?? item.title)
                     .font(.caption)
-                    .foregroundStyle(.primary.opacity(0.85))
+                    .foregroundStyle(Design.Ink.title)
                     .lineLimit(5)
                     .multilineTextAlignment(.leading)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        }
+    }
+
+    private func handleHoverChange() {
+        descriptionTask?.cancel()
+        if isHovering {
+            NSCursor.openHand.set()
+            descriptionTask = Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 280_000_000)
+                guard !Task.isCancelled, isHovering else { return }
+                withAnimation(.easeOut(duration: 0.12)) { showDescription = true }
+            }
+        } else {
+            NSCursor.arrow.set()
+            showDescription = false
         }
     }
 
@@ -246,6 +236,7 @@ struct ItemCardView: View {
     // MARK: - Selection
 
     private func select() {
+        showDescription = false
         let flags = NSEvent.modifierFlags
         if flags.contains(.command) || flags.contains(.shift) {
             if !StoreManager.shared.canMultiSelect, !appState.selectedItemIDs.isEmpty, !isSelected {
@@ -257,6 +248,8 @@ struct ItemCardView: View {
             } else {
                 appState.selectedItemIDs.insert(item.id)
             }
+        } else if isSelected {
+            appState.selectedItemIDs = []
         } else {
             appState.selectedItemIDs = [item.id]
         }

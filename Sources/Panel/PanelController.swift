@@ -8,7 +8,7 @@ final class PanelController {
     static let shared = PanelController()
 
     private var panel: FloatingPanel?
-    private var hostingController: NSHostingController<AnyView>?
+    private var hostingView: NonMovingHostingView<AnyView>?
     private var keyMonitor: Any?
     private var hideAfterDragMonitor: Any?
 
@@ -25,20 +25,42 @@ final class PanelController {
             .modelContainer(DataController.shared.container)
             .environmentObject(AppState.shared)
             .environmentObject(StoreManager.shared)
-        let host = NSHostingController(rootView: AnyView(root))
-        host.view.wantsLayer = true
-        host.view.layer?.backgroundColor = NSColor.clear.cgColor
+        let host = NonMovingHostingView(rootView: AnyView(root.alwaysActiveGlass()))
+        host.wantsLayer = true
+        host.layer?.isOpaque = false
+        host.layer?.backgroundColor = NSColor.clear.cgColor
+        host.layer?.cornerRadius = Design.panelRadius
+        host.layer?.masksToBounds = true
+
+        let glass = NSGlassEffectView()
+        glass.style = .regular
+        glass.cornerRadius = Design.panelRadius
+        glass.contentView = host
 
         let panel = FloatingPanel(
             contentRect: NSRect(origin: .zero, size: NSSize(width: 520, height: 620))
         )
-        panel.contentView = host.view
+        panel.contentView = glass
         panel.contentMinSize = NSSize(width: 380, height: 400)
 
-        hostingController = host
+        hostingView = host
         self.panel = panel
+        panel.onBecomeKey = { [weak self] in
+            self?.bringToFront()
+        }
         positionPanel(initial: true)
         installKeyMonitor()
+    }
+
+    func bringToFront() {
+        guard let panel else { return }
+        panel.level = WindowStack.raised
+        AppWindows.shared.recedeBehindPanel()
+        panel.orderFrontRegardless()
+    }
+
+    func recedeBehindManagement() {
+        panel?.level = WindowStack.base
     }
 
     func toggle() {
@@ -64,7 +86,7 @@ final class PanelController {
         }
         panel.alphaValue = 0
         panel.setFrame(start, display: true)
-        panel.orderFrontRegardless()
+        bringToFront()
         panel.makeKey()
         NSAnimationContext.runAnimationGroup { ctx in
             ctx.duration = 0.22
@@ -320,11 +342,14 @@ final class PanelController {
         let visible = screen.visibleFrame
         let size = panel.frame.size
 
+        // Utility zone: trailing edge, just under the menu bar — same place Yoink / Notification Center use.
+        let margin: CGFloat = 12
+        let topGap: CGFloat = 48
         switch UserSettings.snapSide {
         case .left:
-            panel.setFrameOrigin(NSPoint(x: visible.minX + 16, y: visible.maxY - size.height - 20))
+            panel.setFrameOrigin(NSPoint(x: visible.minX + margin, y: visible.maxY - size.height - topGap))
         case .right:
-            panel.setFrameOrigin(NSPoint(x: visible.maxX - size.width - 16, y: visible.maxY - size.height - 20))
+            panel.setFrameOrigin(NSPoint(x: visible.maxX - size.width - margin, y: visible.maxY - size.height - topGap))
         case .remember:
             if initial, let saved = UserDefaults.standard.string(forKey: frameKey), !saved.isEmpty {
                 let frame = NSRectFromString(saved)
@@ -333,9 +358,10 @@ final class PanelController {
                     return
                 }
             }
-            let x = visible.maxX - size.width - 20
-            let y = visible.maxY - size.height - 20
-            panel.setFrameOrigin(NSPoint(x: x, y: y))
+            panel.setFrameOrigin(NSPoint(
+                x: visible.maxX - size.width - margin,
+                y: visible.maxY - size.height - topGap
+            ))
         }
     }
 

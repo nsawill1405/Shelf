@@ -68,6 +68,64 @@ struct ShelfItemTransferable: Transferable {
         }
     }
 
+    static func itemProvider(for items: [ShelfItem]) -> NSItemProvider {
+        let provider = NSItemProvider()
+        let ids = items.map(\.id.uuidString).joined(separator: ",")
+        provider.registerDataRepresentation(forTypeIdentifier: UTType.shelfInternalItem.identifier, visibility: .ownProcess) { completion in
+            completion(Data(ids.utf8), nil)
+            return nil
+        }
+
+        if items.count == 1, let item = items.first {
+            if let path = item.storedPath {
+                let url = URL(fileURLWithPath: path)
+                provider.registerFileRepresentation(
+                    forTypeIdentifier: (try? url.resourceValues(forKeys: [.contentTypeKey]).contentType?.identifier) ?? UTType.item.identifier,
+                    fileOptions: .openInPlace,
+                    visibility: .all
+                ) { completion in
+                    completion(url, true, nil)
+                    return nil
+                }
+            }
+            if item.type == .image, let path = item.storedPath, let data = try? Data(contentsOf: URL(fileURLWithPath: path)) {
+                provider.registerDataRepresentation(forTypeIdentifier: UTType.png.identifier, visibility: .all) { completion in
+                    completion(data, nil)
+                    return nil
+                }
+            }
+            if let text = item.contentText ?? item.sourceURL ?? item.colorHex ?? (item.title.isEmpty ? nil : item.title) {
+                provider.registerDataRepresentation(forTypeIdentifier: UTType.utf8PlainText.identifier, visibility: .all) { completion in
+                    completion(Data(text.utf8), nil)
+                    return nil
+                }
+                if item.type == .url {
+                    provider.registerDataRepresentation(forTypeIdentifier: UTType.url.identifier, visibility: .all) { completion in
+                        completion(Data(text.utf8), nil)
+                        return nil
+                    }
+                }
+            }
+            return provider
+        }
+
+        let files = items.compactMap(\.storedPath).map { URL(fileURLWithPath: $0) }
+        if files.count == 1 {
+            provider.registerFileRepresentation(forTypeIdentifier: UTType.item.identifier, fileOptions: .openInPlace, visibility: .all) { completion in
+                completion(files[0], true, nil)
+                return nil
+            }
+        }
+        let texts = items.compactMap { $0.contentText ?? $0.sourceURL ?? $0.colorHex ?? $0.title }
+        if !texts.isEmpty {
+            provider.registerDataRepresentation(forTypeIdentifier: UTType.utf8PlainText.identifier, visibility: .all) { completion in
+                completion(Data(texts.joined(separator: "\n").utf8), nil)
+                return nil
+            }
+        }
+        return provider
+    }
+
     /// AppKit writers so a mixed multi-select can leave as native files + text.
     static func pasteboardWriters(for items: [ShelfItem]) -> [NSPasteboardWriting] {
         var writers: [NSPasteboardWriting] = []

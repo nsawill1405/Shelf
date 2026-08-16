@@ -3,55 +3,55 @@ import AppKit
 import SwiftData
 import UniformTypeIdentifiers
 
+/// Finder-style tabs. Accent-tinted glass made the names unreadable.
 struct ShelfSwitcherView: View {
     @EnvironmentObject private var appState: AppState
     @Query(sort: \Shelf.sortIndex) private var shelves: [Shelf]
 
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 6) {
+            HStack(spacing: 2) {
                 ForEach(shelves) { shelf in
-                    chip(for: shelf)
+                    tab(for: shelf)
                 }
                 Button {
                     ShelfActions.promptNewShelf()
                 } label: {
                     Image(systemName: "plus")
                         .font(.system(size: 11, weight: .semibold))
-                        .frame(width: 28, height: 28)
+                        .foregroundStyle(Design.Ink.body)
+                        .frame(width: 26, height: 26)
                 }
                 .buttonStyle(.plain)
-                .background(Circle().fill(Color.primary.opacity(0.06)))
                 .help("New Shelf")
                 .accessibilityLabel("New Shelf")
             }
-            .padding(.vertical, 2)
         }
     }
 
-    private func chip(for shelf: Shelf) -> some View {
+    private func tab(for shelf: Shelf) -> some View {
         let isActive = shelf.id == appState.activeShelf?.id
         return Button {
             withAnimation(Design.snap) {
                 appState.setActiveShelf(shelf)
             }
         } label: {
-            HStack(spacing: 5) {
-                Image(systemName: shelf.isInbox ? "tray" : "square.stack")
-                    .font(.system(size: 10, weight: .semibold))
-                Text(shelf.name)
-                    .font(.callout.weight(isActive ? .semibold : .regular))
-                    .lineLimit(1)
-                Text("\(shelf.items.filter { !$0.isArchived }.count)")
-                    .font(.caption2.monospacedDigit())
-                    .foregroundStyle(isActive ? Color.white.opacity(0.8) : Color.secondary)
+            VStack(spacing: 5) {
+                HStack(spacing: 5) {
+                    Text(shelf.name)
+                        .font(.callout.weight(isActive ? .semibold : .regular))
+                        .foregroundStyle(isActive ? Design.Ink.title : Design.Ink.body)
+                    Text("\(shelf.items.filter { !$0.isArchived }.count)")
+                        .font(.caption2.monospacedDigit())
+                        .foregroundStyle(Design.Ink.quiet)
+                }
+                Capsule()
+                    .fill(isActive ? Design.Ink.title : Color.clear)
+                    .frame(height: 2)
             }
-            .padding(.horizontal, 11)
-            .padding(.vertical, 6)
-            .foregroundStyle(isActive ? Color.white : Color.primary)
-            .background(
-                Capsule().fill(isActive ? Color.accentColor : Color.primary.opacity(0.05))
-            )
+            .padding(.horizontal, 8)
+            .padding(.top, 4)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .onDrop(of: [.shelfInternalItem, .fileURL, .image, .url, .plainText], isTargeted: nil) { providers in

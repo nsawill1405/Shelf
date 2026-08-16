@@ -14,4 +14,7 @@ enum AppConfig {
 
     /// Free tier is the Inbox (Quick Shelf) only.
     static let freeTierShelfLimit: Int = 1
+
+    /// Local testing unlock. Turn this off before shipping a store build.
+    static let testingUnlockPro: Bool = true
 }

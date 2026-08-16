@@ -62,6 +62,18 @@ final class ShelfItem {
         storedPath.map { URL(fileURLWithPath: $0) }
     }
 
+    var hoverPreview: String? {
+        if let hex = colorHex { return hex }
+        if type == .url { return sourceURL ?? contentText }
+        if let text = contentText?.trimmingCharacters(in: .whitespacesAndNewlines), !text.isEmpty {
+            return String(text.prefix(180))
+        }
+        if type == .image, let ocr = searchableText, ocr != title, !ocr.isEmpty {
+            return String(ocr.prefix(180))
+        }
+        return storedFileURL?.lastPathComponent
+    }
+
     func matches(_ query: String) -> Bool {
         let q = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !q.isEmpty else { return true }

@@ -4,13 +4,15 @@ import SwiftUI
 /// Owns the larger management and paywall windows (managed with AppKit so they
 /// can be opened from the floating panel, which is hosted outside a SwiftUI scene).
 @MainActor
-final class AppWindows {
+final class AppWindows: NSObject, NSWindowDelegate {
     static let shared = AppWindows()
 
     private var managementWindow: NSWindow?
     private var paywallWindow: NSWindow?
 
-    private init() {}
+    private override init() {
+        super.init()
+    }
 
     func openManagement() {
         if managementWindow == nil {
@@ -32,20 +34,41 @@ final class AppWindows {
         present(paywallWindow)
     }
 
+    func recedeBehindPanel() {
+        managementWindow?.level = WindowStack.base
+        paywallWindow?.level = WindowStack.base
+    }
+
+    func windowDidBecomeKey(_ notification: Notification) {
+        guard let window = notification.object as? NSWindow else { return }
+        window.level = WindowStack.raised
+        PanelController.shared.recedeBehindManagement()
+        if window !== managementWindow {
+            managementWindow?.level = WindowStack.base
+        }
+        if window !== paywallWindow {
+            paywallWindow?.level = WindowStack.base
+        }
+    }
+
     private func makeWindow<V: View>(root: V, title: String, size: NSSize) -> NSWindow {
-        let host = NSHostingController(rootView: root)
-        let window = NSWindow(contentViewController: host)
+        let host = NSHostingController(rootView: AnyView(root.alwaysActiveGlass()))
+        let window = AlwaysActiveWindow(contentViewController: host)
         window.title = title
         window.setContentSize(size)
         window.styleMask = [.titled, .closable, .miniaturizable, .resizable]
         window.titlebarAppearsTransparent = true
+        window.titleVisibility = .visible
         window.isReleasedWhenClosed = false
+        window.delegate = self
         window.center()
         return window
     }
 
     private func present(_ window: NSWindow?) {
         guard let window else { return }
+        window.level = WindowStack.raised
+        PanelController.shared.recedeBehindManagement()
         window.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
     }

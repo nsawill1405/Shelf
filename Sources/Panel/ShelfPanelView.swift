@@ -35,22 +35,11 @@ struct ShelfPanelView: View {
         VStack(spacing: 0) {
             header
             content
-                .padding(.top, 10)
-            ShelfRail(highlighted: isDropTargeted)
-                .padding(.top, 10)
+                .padding(.top, 12)
             footer
         }
-        .padding(16)
-        .background {
-            RoundedRectangle(cornerRadius: Design.panelRadius, style: .continuous)
-                .fill(.ultraThinMaterial)
-        }
-        .overlay(
-            RoundedRectangle(cornerRadius: Design.panelRadius, style: .continuous)
-                .strokeBorder(Color.white.opacity(0.16), lineWidth: 1)
-        )
-        .clipShape(RoundedRectangle(cornerRadius: Design.panelRadius, style: .continuous))
-        .shadow(color: .black.opacity(0.22), radius: 28, y: 10)
+        .padding(18)
+        .alwaysActiveGlass()
         .overlay {
             if isDropTargeted { dropHighlight }
         }
@@ -80,42 +69,48 @@ struct ShelfPanelView: View {
                 VStack(alignment: .leading, spacing: 1) {
                     Text(activeShelf?.name ?? "Inbox")
                         .font(.title3.weight(.semibold))
+                        .foregroundStyle(Design.Ink.title)
                     Text("Hold this for me.")
                         .font(.caption)
-                        .foregroundStyle(.tertiary)
+                        .foregroundStyle(Design.Ink.quiet)
                 }
-                Spacer(minLength: 8)
-                GlassEffectContainer(spacing: 8) {
-                    HStack(spacing: 6) {
-                        headerButton("doc.on.clipboard", help: "Capture Clipboard (\(ShortcutSettings.capture.displayString))") {
-                            ClipboardService.captureToActiveShelf()
-                        }
-                        headerButton("sidebar.left", help: "Snap left") {
-                            PanelController.shared.snap(to: .left)
-                        }
-                        headerButton("sidebar.right", help: "Snap right") {
-                            PanelController.shared.snap(to: .right)
-                        }
-                        headerButton("rectangle.grid.2x2", help: "Manage Shelves") {
-                            AppWindows.shared.openManagement()
-                        }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(Rectangle())
+                .background(PanelMoveHandle())
+                HStack(spacing: 6) {
+                    HintButton(
+                        symbol: "doc.on.clipboard",
+                        title: "Capture Clipboard",
+                        detail: "Puts whatever is on the clipboard onto this shelf. Shortcut: \(ShortcutSettings.capture.displayString)."
+                    ) {
+                        ClipboardService.captureToActiveShelf()
+                    }
+                    HintButton(
+                        symbol: "sidebar.left",
+                        title: "Snap Left",
+                        detail: "Pins the shelf to the left edge of this display."
+                    ) {
+                        PanelController.shared.snap(to: .left)
+                    }
+                    HintButton(
+                        symbol: "sidebar.right",
+                        title: "Snap Right",
+                        detail: "Pins the shelf to the right edge of this display."
+                    ) {
+                        PanelController.shared.snap(to: .right)
+                    }
+                    HintButton(
+                        symbol: "rectangle.grid.2x2",
+                        title: "Open Inbox",
+                        detail: "Opens the large window to manage every shelf, search everything, and see storage."
+                    ) {
+                        AppWindows.shared.openManagement()
                     }
                 }
             }
             SearchField()
             ShelfSwitcherView()
         }
-    }
-
-    private func headerButton(_ symbol: String, help: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Image(systemName: symbol)
-                .font(.system(size: 12, weight: .semibold))
-                .frame(width: 26, height: 26)
-        }
-        .buttonStyle(.glass)
-        .help(help)
-        .accessibilityLabel(help)
     }
 
     @ViewBuilder
@@ -131,12 +126,12 @@ struct ShelfPanelView: View {
             VStack(spacing: 8) {
                 Image(systemName: "magnifyingglass")
                     .font(.title2)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Design.Ink.body)
                 Text("No results")
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Design.Ink.body)
                 Text("Search titles, text, URLs and OCR.")
                     .font(.caption)
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(Design.Ink.quiet)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
@@ -149,10 +144,6 @@ struct ShelfPanelView: View {
             LazyVGrid(columns: [GridItem(.adaptive(minimum: Design.cardWidth), spacing: 12)], alignment: .leading, spacing: 12) {
                 ForEach(items) { item in
                     ItemCardView(item: item)
-                        .transition(.asymmetric(
-                            insertion: .scale(scale: 0.9).combined(with: .opacity),
-                            removal: .opacity
-                        ))
                 }
             }
             .padding(.vertical, 4)
@@ -168,39 +159,75 @@ struct ShelfPanelView: View {
                 .font(.title3.weight(.semibold))
             Text("Files, images, links, text, colours.")
                 .font(.callout)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Design.Ink.body)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .accessibilityElement(children: .combine)
     }
 
     private var footer: some View {
-        HStack(spacing: 10) {
-            Text(footerLabel)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            Spacer()
-            if !store.isPro {
-                Button {
-                    AppWindows.shared.openPaywall()
-                } label: {
-                    HStack(spacing: 4) {
-                        Image(systemName: "sparkles")
-                        Text("Shelf Pro")
-                    }
-                    .font(.caption.weight(.semibold))
-                }
-                .buttonStyle(.glassProminent)
-                .controlSize(.small)
+        VStack(alignment: .leading, spacing: 8) {
+            if !appState.selectedItemIDs.isEmpty {
+                selectionBar
             }
-            HStack(spacing: 4) {
-                KeyboardKey(ShortcutSettings.toggle.displayString)
-                Text("hide")
-                    .font(.caption2)
-                    .foregroundStyle(.tertiary)
+            HStack(spacing: 10) {
+                Text(footerLabel)
+                    .font(.caption)
+                    .foregroundStyle(Design.Ink.body)
+                Spacer()
+                if !store.isPro {
+                    Button {
+                        AppWindows.shared.openPaywall()
+                    } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: "sparkles")
+                            Text("Shelf Pro")
+                        }
+                        .font(.caption.weight(.semibold))
+                    }
+                    .buttonStyle(.glassProminent)
+                    .controlSize(.small)
+                }
+                HStack(spacing: 4) {
+                    KeyboardKey(ShortcutSettings.toggle.displayString)
+                    Text("hide")
+                        .font(.caption2)
+                        .foregroundStyle(Design.Ink.quiet)
+                }
             }
         }
         .padding(.top, 10)
+    }
+
+    private var selectionBar: some View {
+        let selected = items.filter { appState.selectedItemIDs.contains($0.id) }
+        return HStack(spacing: 8) {
+            Text(selected.count == 1 ? selected[0].title : "\(selected.count) selected")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(Design.Ink.title)
+                .lineLimit(1)
+            Spacer(minLength: 8)
+            if let item = selected.first {
+                footerAction("Open") { selected.forEach(ShelfActions.open) }
+                footerAction("Copy") { ShelfActions.copy(items: selected) }
+                if item.storedFileURL != nil {
+                    footerAction("Preview") {
+                        QuickLookController.shared.preview(selected.compactMap(\.storedFileURL))
+                    }
+                }
+            }
+            footerAction("Clear") { appState.selectedItemIDs.removeAll() }
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 6)
+        .background(Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+
+    private func footerAction(_ title: String, action: @escaping () -> Void) -> some View {
+        Button(title, action: action)
+            .buttonStyle(.plain)
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(Design.Ink.title)
     }
 
     private var footerLabel: String {
@@ -213,8 +240,8 @@ struct ShelfPanelView: View {
     }
 
     private var dropHighlight: some View {
-        RoundedRectangle(cornerRadius: Design.panelRadius, style: .continuous)
-            .strokeBorder(Color.accentColor, style: StrokeStyle(lineWidth: 2.5, dash: [7, 5]))
+        Design.panelShape
+            .strokeBorder(Color.accentColor.opacity(0.85), style: StrokeStyle(lineWidth: 2, dash: [7, 5]))
             .overlay {
                 VStack(spacing: 8) {
                     Image(systemName: "plus.circle.fill")
@@ -224,7 +251,7 @@ struct ShelfPanelView: View {
                 }
                 .foregroundStyle(Color.accentColor)
                 .padding(18)
-                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .glassEffect(.regular.tint(Color.accentColor), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
             }
             .allowsHitTesting(false)
     }

@@ -37,6 +37,7 @@ struct ManagementView: View {
             shelfDetail
         }
         .frame(minWidth: 860, minHeight: 540)
+        .alwaysActiveGlass()
         .toolbar {
             ToolbarItemGroup(placement: .automatic) {
                 Toggle(isOn: $showArchived) {
@@ -76,7 +77,7 @@ struct ManagementView: View {
                             Spacer()
                             Text("\(shelf.items.filter { !$0.isArchived }.count)")
                                 .font(.caption.monospacedDigit())
-                                .foregroundStyle(.tertiary)
+                                .foregroundStyle(Design.Ink.quiet)
                         }
                     } icon: {
                         Image(systemName: shelf.isInbox ? "tray" : "square.stack")
@@ -108,7 +109,7 @@ struct ManagementView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("\(allItems.count) items · \(ItemStorage.formattedUsage)")
                         .font(.caption2)
-                        .foregroundStyle(.tertiary)
+                        .foregroundStyle(Design.Ink.quiet)
                     ProgressView(value: storageFraction)
                         .controlSize(.small)
                         .tint(Color.accentColor)
@@ -133,7 +134,7 @@ struct ManagementView: View {
                         .font(.title2.weight(.semibold))
                     Text(detailSubtitle)
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Design.Ink.body)
                 }
                 Spacer()
                 searchBar
@@ -148,13 +149,13 @@ struct ManagementView: View {
                 VStack(spacing: 8) {
                     Image(systemName: search.isEmpty ? "tray" : "magnifyingglass")
                         .font(.system(size: 32))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Design.Ink.body)
                     Text(search.isEmpty ? "This shelf is empty." : "No results.")
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Design.Ink.body)
                     if search.isEmpty {
                         Text("Drop things onto the floating shelf, or paste with \(ShortcutSettings.capture.displayString).")
                             .font(.caption)
-                            .foregroundStyle(.tertiary)
+                            .foregroundStyle(Design.Ink.quiet)
                     }
                 }
                 Spacer()
@@ -191,12 +192,13 @@ struct ManagementView: View {
 
     private var searchBar: some View {
         HStack(spacing: 6) {
-            Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
+            Image(systemName: "magnifyingglass").foregroundStyle(Design.Ink.body)
             TextField(selectedShelf == nil ? "Search everything" : "Search this shelf", text: $search)
                 .textFieldStyle(.plain)
+                .foregroundStyle(Design.Ink.title)
             if !search.isEmpty {
                 Button { search = "" } label: {
-                    Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary)
+                    Image(systemName: "xmark.circle.fill").foregroundStyle(Design.Ink.body)
                 }
                 .buttonStyle(.plain)
             }
@@ -204,7 +206,7 @@ struct ManagementView: View {
         .padding(.horizontal, 10)
         .padding(.vertical, 7)
         .frame(width: 260)
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
+        .background(Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: 9, style: .continuous))
     }
 
     private func moveItems(from source: IndexSet, to destination: Int) {
@@ -244,15 +246,16 @@ private struct ItemRow: View {
     var body: some View {
         HStack(spacing: 10) {
             Image(systemName: item.type.systemImage)
-                .foregroundStyle(item.isPinned ? Color.accentColor : .secondary)
+                .foregroundStyle(item.isPinned ? Color.accentColor : Design.Ink.body)
                 .frame(width: 24)
             VStack(alignment: .leading, spacing: 2) {
                 Text(item.title)
+                    .foregroundStyle(Design.Ink.title)
                     .lineLimit(1)
                     .strikethrough(item.isArchived)
                 Text(subtitle)
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Design.Ink.body)
             }
             Spacer()
             if item.isPinned {
