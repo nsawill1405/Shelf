@@ -12,6 +12,9 @@ xcuserdata/
 *.dSYM
 .swiftpm/
 
+# Trailer render output
+Trailer/renders/
+
 # macOS
 .DS_Store
 .AppleDouble
