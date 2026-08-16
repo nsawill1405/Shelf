@@ -22,8 +22,10 @@
 		4039C1D212E8BE5750D5FB7C /* Shortcut.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6BE50005085C9595B4F806C /* Shortcut.swift */; };
 		46EDC6203F055A0AA1A9FCEA /* AppConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0288D2D02B0354ADF172072 /* AppConfig.swift */; };
 		48E73D3A6E8A7EE9F9669C54 /* ShortcutRecorderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAA4D77E6545AE8FF35C6C7F /* ShortcutRecorderView.swift */; };
+		48F5FAE901205B685D90543C /* ExpiryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88BA27ED2F2D27728E7490AA /* ExpiryService.swift */; };
 		4D5197A592E328390EA64108 /* ItemType.swift in Sources */ = {isa = PBXBuildFile; fileRef = 844C2C7CCD8F449035CC9D5F /* ItemType.swift */; };
 		52EEDE4B29C0A0C04E2B9F04 /* QuickLookController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 131B19B5477AFFEF2019707A /* QuickLookController.swift */; };
+		5452CB8FA237FD49ECCEC889 /* ServicesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0DBCEE9C0450A4961C869A6 /* ServicesProvider.swift */; };
 		59E2F191FD1C011F92E18F09 /* ShelfApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = D80C3974EE1A51D8AD4076F5 /* ShelfApp.swift */; };
 		5DAA75E1C9C296B1EA20DB9E /* ShelfItemTransferable.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3DED1AD46FB4B4351449AE6 /* ShelfItemTransferable.swift */; };
 		60B08E1DCAFA9BE0944E5DF6 /* OCRService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1ADBD0B7F1BA967885047326 /* OCRService.swift */; };
@@ -53,6 +55,7 @@
 		ED7E6902C45E3FD3BB196CD2 /* ItemImporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = C9F54907C87BE6F94F37D23C /* ItemImporter.swift */; };
 		EF0C57ECDC2C9FFB9147C116 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 4AFBED46002A3A4315CFFDFF /* Assets.xcassets */; };
 		F3EB22930D6120BA73986B6E /* Shelf.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8A4AC5C89EE7C55A1579BB5 /* Shelf.swift */; };
+		F54F5709CD32802D84C4BCA6 /* ItemStacks.swift in Sources */ = {isa = PBXBuildFile; fileRef = A4BAEBA5C49FEC846544AB02 /* ItemStacks.swift */; };
 		FB63E7B375E4D39DB26B8077 /* ClipboardService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D89A0C75BFBE5F2AF07DA7F /* ClipboardService.swift */; };
 		FCD77FF6225D9C8103973346 /* ItemDragHandle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0DE3E8F7ACB1C7F0BBEC97C0 /* ItemDragHandle.swift */; };
 		FDDCD3F188202E47A2834FF8 /* ItemCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 087F5072ED398EAA88DBA472 /* ItemCardView.swift */; };
@@ -85,6 +88,7 @@
 		844C2C7CCD8F449035CC9D5F /* ItemType.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ItemType.swift; sourceTree = "<group>"; };
 		86BCC71A786944275BF97A87 /* HoverSensor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HoverSensor.swift; sourceTree = "<group>"; };
 		8843570E8B58ADF21B54CC16 /* ShelfItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShelfItem.swift; sourceTree = "<group>"; };
+		88BA27ED2F2D27728E7490AA /* ExpiryService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExpiryService.swift; sourceTree = "<group>"; };
 		8D308CC4B198B8CF3423924F /* Extensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Extensions.swift; sourceTree = "<group>"; };
 		9032A078DC5CBD2A2B31DAF9 /* ShelfActions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShelfActions.swift; sourceTree = "<group>"; };
 		950E168AF5D46B838D687C48 /* BackupService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackupService.swift; sourceTree = "<group>"; };
@@ -92,9 +96,11 @@
 		9DE62D3F8AA40E6D4629B1EF /* GlobalShortcutController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlobalShortcutController.swift; sourceTree = "<group>"; };
 		A38CA9CCEE6AED0B92480B06 /* ItemDescriptionCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ItemDescriptionCard.swift; sourceTree = "<group>"; };
 		A43867B5F3ADEC93318EF2DD /* UserSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserSettings.swift; sourceTree = "<group>"; };
+		A4BAEBA5C49FEC846544AB02 /* ItemStacks.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ItemStacks.swift; sourceTree = "<group>"; };
 		ABC651729A9000C775B71930 /* AppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppState.swift; sourceTree = "<group>"; };
 		AC100D8D90CCDF5AF7BBE9BE /* MenuBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarView.swift; sourceTree = "<group>"; };
 		B0288D2D02B0354ADF172072 /* AppConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppConfig.swift; sourceTree = "<group>"; };
+		B0DBCEE9C0450A4961C869A6 /* ServicesProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServicesProvider.swift; sourceTree = "<group>"; };
 		B8A4AC5C89EE7C55A1579BB5 /* Shelf.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Shelf.swift; sourceTree = "<group>"; };
 		C1AE4DA8BBAC7E95931D6EB1 /* ShelfPanelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShelfPanelView.swift; sourceTree = "<group>"; };
 		C434CA69BBA8550DF6E411AC /* Shelf.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Shelf.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -175,10 +181,12 @@
 				2D89A0C75BFBE5F2AF07DA7F /* ClipboardService.swift */,
 				296148BB546767CFA6917EC9 /* ContentHasher.swift */,
 				10F0787A4589684A768E46E5 /* DuplicateDetector.swift */,
+				88BA27ED2F2D27728E7490AA /* ExpiryService.swift */,
 				9DE62D3F8AA40E6D4629B1EF /* GlobalShortcutController.swift */,
 				2422E6B844CB210362C0631E /* Haptics.swift */,
 				1ADBD0B7F1BA967885047326 /* OCRService.swift */,
 				131B19B5477AFFEF2019707A /* QuickLookController.swift */,
+				B0DBCEE9C0450A4961C869A6 /* ServicesProvider.swift */,
 				37DDE7D14825EA7A293F8597 /* ThumbnailProvider.swift */,
 				51C5CB094623FB7F9B5AE031 /* URLPreviewService.swift */,
 			);
@@ -242,6 +250,7 @@
 			isa = PBXGroup;
 			children = (
 				21EB4C373750EAFD2CA847A1 /* ItemClassifier.swift */,
+				A4BAEBA5C49FEC846544AB02 /* ItemStacks.swift */,
 				844C2C7CCD8F449035CC9D5F /* ItemType.swift */,
 				B8A4AC5C89EE7C55A1579BB5 /* Shelf.swift */,
 				8843570E8B58ADF21B54CC16 /* ShelfItem.swift */,
@@ -371,6 +380,7 @@
 				96024FEC74BA948C0A6221A2 /* Design.swift in Sources */,
 				2B81C4FBE0C9F31DACF3F715 /* DuplicateDetector.swift in Sources */,
 				3657FD686E0072EB37FBD206 /* EdgeDropController.swift in Sources */,
+				48F5FAE901205B685D90543C /* ExpiryService.swift in Sources */,
 				285B62EAA624C12D8E5A424C /* Extensions.swift in Sources */,
 				FF530680FD4B3751DBFD9DA2 /* FloatingPanel.swift in Sources */,
 				D77C5D639E1C7A269A49B4ED /* GlobalShortcutController.swift in Sources */,
@@ -382,6 +392,7 @@
 				73939950AB44600A2B661B38 /* ItemDescriptionCard.swift in Sources */,
 				FCD77FF6225D9C8103973346 /* ItemDragHandle.swift in Sources */,
 				ED7E6902C45E3FD3BB196CD2 /* ItemImporter.swift in Sources */,
+				F54F5709CD32802D84C4BCA6 /* ItemStacks.swift in Sources */,
 				E9BEB13715543522A4E6B808 /* ItemStorage.swift in Sources */,
 				4D5197A592E328390EA64108 /* ItemType.swift in Sources */,
 				1CC7D597E07D3BB5BA6A26E6 /* ManagementView.swift in Sources */,
@@ -394,6 +405,7 @@
 				CA878C17D7B8A59299854F0B /* PreferencesView.swift in Sources */,
 				52EEDE4B29C0A0C04E2B9F04 /* QuickLookController.swift in Sources */,
 				1C2E5C7A001246CB580A3798 /* SearchField.swift in Sources */,
+				5452CB8FA237FD49ECCEC889 /* ServicesProvider.swift in Sources */,
 				F3EB22930D6120BA73986B6E /* Shelf.swift in Sources */,
 				ED46DFB088AA62C6E44865B4 /* ShelfActions.swift in Sources */,
 				59E2F191FD1C011F92E18F09 /* ShelfApp.swift in Sources */,

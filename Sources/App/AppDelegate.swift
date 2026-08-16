@@ -9,6 +9,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         PanelController.shared.prepare()
         GlobalShortcutController.shared.register()
         EdgeDropController.shared.start()
+        ServicesProvider.shared.register()
+        ExpiryService.start()
         observeAppActivation()
     }
 

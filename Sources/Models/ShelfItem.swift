@@ -27,6 +27,14 @@ final class ShelfItem {
     var byteSize: Int64 = 0
     var pageTitle: String? = nil
     var faviconPath: String? = nil
+    /// RTF or HTML bytes when the source provided formatted text.
+    var richTextData: Data? = nil
+    /// UTI of `richTextData` (`public.rtf` or `public.html`).
+    var richTextType: String? = nil
+    /// Items created in one drop share this so the panel can collapse them.
+    var stackID: UUID? = nil
+    /// When set, the item archives itself after this date instead of being deleted.
+    var expiresAt: Date? = nil
 
     var shelf: Shelf?
 
@@ -93,5 +101,16 @@ final class ShelfItem {
         .compactMap { $0 }
         .joined(separator: " ")
         return haystack.localizedCaseInsensitiveContains(q)
+    }
+
+    var isExpiringSoon: Bool {
+        guard let expiresAt, !isArchived else { return false }
+        return expiresAt.timeIntervalSinceNow < 6 * 60 * 60
+    }
+
+    var expiryLabel: String? {
+        guard let expiresAt, !isArchived else { return nil }
+        if expiresAt.timeIntervalSinceNow <= 0 { return "Expired" }
+        return "Until \(expiresAt.formatted(.dateTime.hour().minute()))"
     }
 }

@@ -41,6 +41,10 @@ The project uses ad-hoc code signing locally. For App Store distribution, set yo
 - Links fetch a title and favicon on this Mac
 - Inbox can suggest archiving things unused for two weeks
 - Settings can write a backup into an iCloud Drive folder
+- Services → Send to Shelf from other apps (does not log clipboard history)
+- Multi-item drops collapse into a stack
+- Optional “keep until” expiry archives instead of deleting
+- Management can export a shelf as a folder, show largest items, and empty the archive
 
 ## Free vs Shelf Pro
 

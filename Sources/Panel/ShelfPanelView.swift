@@ -12,7 +12,7 @@ struct ShelfPanelView: View {
     @State private var isDropTargeted = false
 
     private let dropTypes: [UTType] = [
-        .fileURL, .image, .url, .text, .plainText, .utf8PlainText, .png, .jpeg, .pdf, .cocoaColor
+        .fileURL, .image, .url, .text, .plainText, .utf8PlainText, .rtf, .html, .png, .jpeg, .pdf, .cocoaColor
     ]
 
     private var activeShelf: Shelf? { appState.activeShelf }
@@ -137,13 +137,44 @@ struct ShelfPanelView: View {
     }
 
     private var grid: some View {
-        ScrollView {
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: Design.cardWidth), spacing: 12)], alignment: .leading, spacing: 12) {
-                ForEach(items) { item in
-                    ItemCardView(item: item)
+        let searching = !appState.searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        let display = ItemStacks.grouped(items, expanded: searching ? Set(items.compactMap(\.stackID)) : appState.expandedStackIDs)
+        return ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                if !searching {
+                    let pinned = display.filter { $0.representative.isPinned }
+                    let today = display.filter { !$0.representative.isPinned && Calendar.current.isDateInToday($0.representative.lastUsedAt) }
+                    let rest = display.filter { !$0.representative.isPinned && !Calendar.current.isDateInToday($0.representative.lastUsedAt) }
+                    if !pinned.isEmpty {
+                        cardSection("Pinned", display.filter { $0.representative.isPinned })
+                    }
+                    if !today.isEmpty {
+                        cardSection("Used today", today)
+                    }
+                    cardSection(today.isEmpty && pinned.isEmpty ? nil : "Earlier", rest)
+                } else {
+                    cardSection(nil, display)
                 }
             }
             .padding(.vertical, 4)
+        }
+    }
+
+    @ViewBuilder
+    private func cardSection(_ title: String?, _ rows: [ShelfDisplayItem]) -> some View {
+        if !rows.isEmpty {
+            VStack(alignment: .leading, spacing: 8) {
+                if let title {
+                    Text(title)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(Design.Ink.quiet)
+                }
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: Design.cardWidth), spacing: 12)], alignment: .leading, spacing: 12) {
+                    ForEach(rows) { row in
+                        ItemCardView(item: row.representative, stackItems: row.count > 1 ? row.items : nil)
+                    }
+                }
+            }
         }
     }
 
@@ -232,6 +263,10 @@ struct ShelfPanelView: View {
         let noun = count == 1 ? "item" : "items"
         if !appState.searchQuery.isEmpty, UserSettings.searchAllShelves {
             return "\(count) \(noun) across \(shelves.count) shelves"
+        }
+        let stacks = Set(items.compactMap(\.stackID)).count
+        if stacks > 0, appState.expandedStackIDs.isEmpty {
+            return "\(count) \(noun) · \(stacks) stack\(stacks == 1 ? "" : "s")"
         }
         return "\(count) \(noun)"
     }

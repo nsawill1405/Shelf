@@ -106,6 +106,9 @@ enum BackupService {
             "contentHash": item.contentHash as Any,
             "byteSize": item.byteSize,
             "pageTitle": item.pageTitle as Any,
+            "stackID": item.stackID?.uuidString as Any,
+            "expiresAt": item.expiresAt?.timeIntervalSince1970 as Any,
+            "richTextType": item.richTextType as Any,
             "file": fileName as Any
         ]
     }
@@ -159,6 +162,12 @@ enum BackupService {
                 item.originatingApp = itemJSON["originatingApp"] as? String
                 item.isPinned = itemJSON["isPinned"] as? Bool ?? false
                 item.isArchived = itemJSON["isArchived"] as? Bool ?? false
+                if let stack = itemJSON["stackID"] as? String {
+                    item.stackID = UUID(uuidString: stack)
+                }
+                if let expires = itemJSON["expiresAt"] as? TimeInterval {
+                    item.expiresAt = Date(timeIntervalSince1970: expires)
+                }
                 item.shelf = shelf
                 context.insert(item)
             }

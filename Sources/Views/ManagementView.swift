@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import AppKit
 
 struct ManagementView: View {
     @EnvironmentObject private var appState: AppState
@@ -52,6 +53,13 @@ struct ManagementView: View {
                 }
                 .pickerStyle(.segmented)
                 .frame(width: 90)
+
+                if showArchived {
+                    Button("Empty Archive") {
+                        ShelfActions.emptyArchive(in: selectedShelf)
+                    }
+                    .help("Permanently remove archived items")
+                }
             }
             ToolbarItem(placement: .primaryAction) {
                 if !store.isPro {
@@ -138,6 +146,12 @@ struct ManagementView: View {
                         .foregroundStyle(Design.Ink.body)
                 }
                 Spacer()
+                if let selectedShelf {
+                    Button("Export…") {
+                        ShelfActions.exportShelf(selectedShelf)
+                    }
+                    .help("Write a folder copy of this shelf")
+                }
                 Picker("Sort", selection: $appState.sortMode) {
                     ForEach(ShelfSortMode.allCases) { mode in
                         Text(mode.title).tag(mode)
@@ -152,6 +166,10 @@ struct ManagementView: View {
 
             if !suggested.isEmpty {
                 suggestionBanner
+            }
+
+            if search.isEmpty, !showArchived, !largest.isEmpty {
+                largestBanner
             }
 
             Divider()
@@ -191,6 +209,37 @@ struct ManagementView: View {
                 .listStyle(.inset)
             }
         }
+    }
+
+    private var largest: [ShelfItem] {
+        items.filter { $0.byteSize > 0 }.sorted { $0.byteSize > $1.byteSize }.prefix(3).map { $0 }
+    }
+
+    private var largestBanner: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "internaldrive")
+                .foregroundStyle(Design.Ink.body)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Largest")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(Design.Ink.title)
+                Text(largest.map { "\($0.title) (\(ByteCountFormatter.string(fromByteCount: $0.byteSize, countStyle: .file)))" }.joined(separator: " · "))
+                    .font(.caption2)
+                    .foregroundStyle(Design.Ink.body)
+                    .lineLimit(2)
+            }
+            Spacer()
+            if let first = largest.first, let url = first.storedFileURL {
+                Button("Reveal") {
+                    NSWorkspace.shared.activateFileViewerSelecting([url])
+                }
+                .buttonStyle(.plain)
+                .font(.caption.weight(.semibold))
+            }
+        }
+        .padding(.horizontal, 18)
+        .padding(.vertical, 8)
+        .background(Color.primary.opacity(0.04))
     }
 
     private var suggested: [ShelfItem] {
@@ -303,8 +352,16 @@ private struct ItemRow: View {
         .contextMenu {
             Button("Open") { ShelfActions.open(item) }
             Button("Copy") { ShelfActions.copy(item) }
-            Button(item.isPinned ? "Unpin" : "Pin") { ShelfActions.pin(item) }
+            Button(item.isPinned ? "Unpin" : "Pin to top") { ShelfActions.pin(item) }
             Button(item.isArchived ? "Restore" : "Archive") { ShelfActions.archive(item) }
+            Menu("Put this on") {
+                ForEach(DataController.shared.allShelves) { shelf in
+                    Button(shelf.name) { ShelfActions.move(item, to: shelf) }
+                }
+            }
+            if let url = item.storedFileURL {
+                Button("Reveal in Finder") { NSWorkspace.shared.activateFileViewerSelecting([url]) }
+            }
             Divider()
             Button("Delete", role: .destructive) { DataController.shared.deleteItem(item) }
         }

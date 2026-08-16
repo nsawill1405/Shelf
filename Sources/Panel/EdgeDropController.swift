@@ -38,10 +38,10 @@ final class EdgeDropController: NSObject, NSWindowDelegate {
         strips.forEach { $0.orderOut(nil) }
         strips.removeAll()
         for screen in NSScreen.screens {
-            let visible = screen.visibleFrame
-            let thickness: CGFloat = 8
-            let right = EdgeStripPanel(contentRect: NSRect(x: visible.maxX - thickness, y: visible.minY, width: thickness, height: visible.height))
-            let left = EdgeStripPanel(contentRect: NSRect(x: visible.minX, y: visible.minY, width: thickness, height: visible.height))
+            let frame = screen.frame
+            let thickness: CGFloat = 16
+            let right = EdgeStripPanel(contentRect: NSRect(x: frame.maxX - thickness, y: frame.minY, width: thickness, height: frame.height))
+            let left = EdgeStripPanel(contentRect: NSRect(x: frame.minX, y: frame.minY, width: thickness, height: frame.height))
             strips.append(contentsOf: [right, left])
             right.orderFrontRegardless()
             left.orderFrontRegardless()
@@ -81,9 +81,11 @@ private final class EdgeStripView: NSView {
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
         registerForDraggedTypes([
-            .fileURL, .png, .tiff, .URL, .string,
+            .fileURL, .png, .tiff, .URL, .string, .rtf, .html,
             NSPasteboard.PasteboardType(UTType.image.identifier),
-            NSPasteboard.PasteboardType(UTType.pdf.identifier)
+            NSPasteboard.PasteboardType(UTType.pdf.identifier),
+            NSPasteboard.PasteboardType(UTType.rtf.identifier),
+            NSPasteboard.PasteboardType(UTType.html.identifier)
         ])
     }
 

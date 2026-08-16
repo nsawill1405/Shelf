@@ -53,6 +53,10 @@ struct PreferencesView: View {
 
     private var general: some View {
         Form {
+            Section("Capture") {
+                Text("Other apps can send the current selection through Services → Send to Shelf. That does not read clipboard history.")
+                    .foregroundStyle(.secondary)
+            }
             Section("Shelf") {
                 Picker("New items go to", selection: Binding(
                     get: { appState.activeShelfID ?? DataController.shared.inbox?.id },

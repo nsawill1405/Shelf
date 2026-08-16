@@ -2,14 +2,26 @@ import AppKit
 import UniformTypeIdentifiers
 
 struct DragPayload {
+    let id: UUID
     let title: String
     let filePath: String?
     let text: String?
+    let kind: ItemType
+    let sourceURL: String?
+    let richTextData: Data?
+    let richTextType: String?
+    let colorHex: String?
 
     init(item: ShelfItem) {
+        id = item.id
         title = item.title
         filePath = item.storedPath
         text = item.contentText ?? item.sourceURL ?? item.colorHex
+        kind = item.type
+        sourceURL = item.sourceURL ?? (item.type == .url ? item.contentText : nil)
+        richTextData = item.richTextData
+        richTextType = item.richTextType
+        colorHex = item.colorHex
     }
 }
 
@@ -22,34 +34,70 @@ enum OutgoingItemDrag {
         session = nil
 
         var draggingItems: [NSDraggingItem] = []
-        let sessionHolder = Session()
+        let sessionHolder = Session(itemIDs: payloads.map(\.id))
         let origin = view.convert(event.locationInWindow, from: nil)
         let stackPreview = stackImage(for: payloads)
 
         for (index, payload) in payloads.enumerated() {
             let frame = NSRect(x: origin.x - 36 + CGFloat(index) * 8, y: origin.y - 36 - CGFloat(index) * 8, width: 72, height: 72)
-
-            if let path = payload.filePath {
-                let source = URL(fileURLWithPath: path)
-                let type = UTType(filenameExtension: source.pathExtension) ?? .data
-                let promise = NSFilePromiseProvider(fileType: type.identifier, delegate: sessionHolder)
-                promise.userInfo = source
-                sessionHolder.sources.append(source)
-                let dragItem = NSDraggingItem(pasteboardWriter: promise)
-                let preview = index == 0 ? stackPreview : nil
-                dragItem.setDraggingFrame(frame, contents: preview ?? NSWorkspace.shared.icon(forFile: path))
-                draggingItems.append(dragItem)
-            } else if let text = payload.text, !text.isEmpty {
-                let dragItem = NSDraggingItem(pasteboardWriter: text as NSString)
-                dragItem.setDraggingFrame(frame, contents: nil)
-                draggingItems.append(dragItem)
+            let writer = pasteboardWriter(for: payload, session: sessionHolder)
+            let dragItem = NSDraggingItem(pasteboardWriter: writer)
+            let preview: NSImage?
+            if index == 0 {
+                preview = stackPreview
+            } else if let path = payload.filePath {
+                preview = NSWorkspace.shared.icon(forFile: path)
+            } else {
+                preview = nil
             }
+            dragItem.setDraggingFrame(frame, contents: preview)
+            draggingItems.append(dragItem)
         }
 
         guard !draggingItems.isEmpty else { return }
         session = sessionHolder
         view.beginDraggingSession(with: draggingItems, event: event, source: sessionHolder)
-        PanelController.shared.itemDidBeginExternalDrag()
+    }
+
+    private static func pasteboardWriter(for payload: DragPayload, session: Session) -> NSPasteboardWriting {
+        if let path = payload.filePath {
+            let source = URL(fileURLWithPath: path)
+            let type = UTType(filenameExtension: source.pathExtension)
+                ?? sourceType(for: payload.kind)
+            let promise = NSFilePromiseProvider(fileType: type.identifier, delegate: session)
+            promise.userInfo = source
+            session.sources.append(source)
+            return promise
+        }
+
+        let item = NSPasteboardItem()
+        if let text = payload.text, !text.isEmpty {
+            item.setString(text, forType: .string)
+        }
+        if payload.kind == .url, let raw = payload.sourceURL ?? payload.text, let url = URL(string: raw) {
+            item.setString(url.absoluteString, forType: .URL)
+        }
+        if let data = payload.richTextData, let type = payload.richTextType {
+            if type == UTType.rtf.identifier {
+                item.setData(data, forType: .rtf)
+            } else if type == UTType.html.identifier {
+                item.setData(data, forType: .html)
+            }
+        }
+        if let hex = payload.colorHex {
+            item.setString(hex, forType: .string)
+        }
+        return item
+    }
+
+    private static func sourceType(for kind: ItemType) -> UTType {
+        switch kind {
+        case .image: return .png
+        case .pdf: return .pdf
+        case .text, .code, .email: return .plainText
+        case .url: return .url
+        default: return .data
+        }
     }
 
     private static func stackImage(for payloads: [DragPayload]) -> NSImage {
@@ -88,12 +136,25 @@ enum OutgoingItemDrag {
 
     final class Session: NSObject, NSDraggingSource, NSFilePromiseProviderDelegate {
         var sources: [URL] = []
+        let itemIDs: [UUID]
+
+        init(itemIDs: [UUID]) {
+            self.itemIDs = itemIDs
+        }
 
         func draggingSession(_ session: NSDraggingSession, sourceOperationMaskFor context: NSDraggingContext) -> NSDragOperation {
             .copy
         }
 
         func draggingSession(_ session: NSDraggingSession, endedAt screenPoint: NSPoint, operation: NSDragOperation) {
+            let succeeded = !operation.isEmpty
+            let ids = itemIDs
+            Task { @MainActor in
+                if succeeded {
+                    ShelfActions.markUsed(ids: ids)
+                }
+                PanelController.shared.itemDidEndExternalDrag(succeeded: succeeded)
+            }
             OutgoingItemDrag.session = nil
         }
 

@@ -1,4 +1,6 @@
 import AppKit
+import SwiftData
+import UniformTypeIdentifiers
 
 /// Shared actions used across the panel, menu bar and management window.
 @MainActor
@@ -42,6 +44,11 @@ enum ShelfActions {
             if let path = item.storedPath {
                 writers.append(URL(fileURLWithPath: path) as NSURL)
             }
+            if let data = item.richTextData, item.richTextType == UTType.rtf.identifier {
+                pasteboard.setData(data, forType: .rtf)
+            } else if let data = item.richTextData, item.richTextType == UTType.html.identifier {
+                pasteboard.setData(data, forType: .html)
+            }
             let text = item.contentText ?? item.colorHex ?? item.sourceURL ?? item.title
             if !text.isEmpty { texts.append(text) }
         }
@@ -54,6 +61,85 @@ enum ShelfActions {
         try? items.first?.modelContext?.save()
         let label = items.count == 1 ? "Copied \(items[0].title)" : "Copied \(items.count) items"
         AppState.shared.showToast(label)
+    }
+
+    static func markUsed(ids: [UUID]) {
+        let fetch = FetchDescriptor<ShelfItem>()
+        let all = (try? DataController.shared.context.fetch(fetch)) ?? []
+        let now = Date()
+        for item in all where ids.contains(item.id) {
+            item.lastUsedAt = now
+        }
+        try? DataController.shared.context.save()
+    }
+
+    static func setExpiry(_ item: ShelfItem, _ date: Date?) {
+        item.expiresAt = date
+        try? item.modelContext?.save()
+        if let date {
+            AppState.shared.showToast("Kept until \(date.formatted(date: .omitted, time: .shortened))")
+        } else {
+            AppState.shared.showToast("No expiry")
+        }
+    }
+
+    static func emptyArchive(in shelf: Shelf?) {
+        let fetch = FetchDescriptor<ShelfItem>()
+        let all = (try? DataController.shared.context.fetch(fetch)) ?? []
+        let doomed = all.filter { $0.isArchived && (shelf == nil || $0.shelf?.id == shelf?.id) }
+        for item in doomed {
+            DataController.shared.deleteItem(item)
+        }
+        AppState.shared.showToast(doomed.isEmpty ? "Archive is empty" : "Removed \(doomed.count) archived items")
+    }
+
+    static func exportShelf(_ shelf: Shelf) {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        panel.canCreateDirectories = true
+        panel.prompt = "Export"
+        panel.message = "Choose a folder. Shelf writes a copy of “\(shelf.name)” into it."
+        guard panel.runModal() == .OK, let dest = panel.url else { return }
+        let folder = dest.appendingPathComponent(safeFileName(shelf.name), isDirectory: true)
+        try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        var written = 0
+        for item in shelf.sortedItems where !item.isArchived {
+            if let path = item.storedPath {
+                let name = uniqueName(URL(fileURLWithPath: path).lastPathComponent, in: folder)
+                try? FileManager.default.copyItem(at: URL(fileURLWithPath: path), to: folder.appendingPathComponent(name))
+                written += 1
+            } else if let data = item.richTextData, item.richTextType == UTType.rtf.identifier {
+                let name = uniqueName(safeFileName(item.title) + ".rtf", in: folder)
+                try? data.write(to: folder.appendingPathComponent(name))
+                written += 1
+            } else if let text = item.contentText ?? item.sourceURL ?? item.colorHex {
+                let name = uniqueName(safeFileName(item.title) + ".txt", in: folder)
+                try? text.write(to: folder.appendingPathComponent(name), atomically: true, encoding: .utf8)
+                written += 1
+            }
+        }
+        AppState.shared.showToast(written == 0 ? "Nothing to export" : "Exported \(written) items")
+        NSWorkspace.shared.activateFileViewerSelecting([folder])
+    }
+
+    private static func safeFileName(_ raw: String) -> String {
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        let cleaned = trimmed.replacingOccurrences(of: "/", with: "-")
+        return cleaned.isEmpty ? "Item" : String(cleaned.prefix(80))
+    }
+
+    private static func uniqueName(_ name: String, in folder: URL) -> String {
+        var candidate = name
+        var index = 2
+        while FileManager.default.fileExists(atPath: folder.appendingPathComponent(candidate).path) {
+            let url = URL(fileURLWithPath: name)
+            let base = url.deletingPathExtension().lastPathComponent
+            let ext = url.pathExtension
+            candidate = ext.isEmpty ? "\(base) \(index)" : "\(base) \(index).\(ext)"
+            index += 1
+        }
+        return candidate
     }
 
     static func pin(_ item: ShelfItem) {

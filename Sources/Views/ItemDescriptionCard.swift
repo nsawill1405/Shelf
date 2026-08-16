@@ -33,6 +33,18 @@ struct ItemDescriptionCard: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
 
+            if let expiry = item.expiryLabel {
+                Text(expiry)
+                    .font(.caption2)
+                    .foregroundStyle(item.isExpiringSoon ? Color.orange : Design.Ink.quiet)
+            }
+
+            if let app = item.originatingApp, !app.isEmpty {
+                Text("From \(app)")
+                    .font(.caption2)
+                    .foregroundStyle(Design.Ink.quiet)
+            }
+
             Text("Added \(item.createdAt.formatted(.relative(presentation: .named)))")
                 .font(.caption2)
                 .foregroundStyle(Design.Ink.quiet)

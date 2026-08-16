@@ -13,6 +13,7 @@ enum ItemImporter {
         context: ModelContext
     ) async -> [ShelfItem] {
         guard StoreManager.shared.requireCapacity(for: max(providers.count, 1)) else { return [] }
+        stampOriginatingApp()
         var created: [ShelfItem] = []
         for provider in providers {
             if !StoreManager.shared.canAddItems(1) {
@@ -21,6 +22,10 @@ enum ItemImporter {
             }
             let items = await importProvider(provider, into: shelf, context: context)
             created.append(contentsOf: items)
+        }
+        if created.count > 1 {
+            let stack = UUID()
+            for item in created { item.stackID = stack }
         }
         if !created.isEmpty {
             try? context.save()
@@ -49,6 +54,26 @@ enum ItemImporter {
             return [importText(urlString, type: .url, into: shelf, context: context)]
         }
 
+        if let rtf = await loadData(from: provider, forType: UTType.rtf.identifier) {
+            let plain = await loadString(from: provider, types: [.plainText, .utf8PlainText, .text])
+                ?? plainText(fromRTF: rtf)
+                ?? "Text"
+            let item = importText(plain, type: ItemClassifier.classify(text: plain), into: shelf, context: context)
+            item.richTextData = rtf
+            item.richTextType = UTType.rtf.identifier
+            return [item]
+        }
+
+        if let html = await loadData(from: provider, forType: UTType.html.identifier) {
+            let plain = await loadString(from: provider, types: [.plainText, .utf8PlainText, .text])
+                ?? String(data: html, encoding: .utf8)
+                ?? "Text"
+            let item = importText(plain, type: ItemClassifier.classify(text: plain), into: shelf, context: context)
+            item.richTextData = html
+            item.richTextType = UTType.html.identifier
+            return [item]
+        }
+
         if let text = await loadString(from: provider, types: [.plainText, .text, .utf8PlainText]) {
             return [importText(text, type: ItemClassifier.classify(text: text), into: shelf, context: context)]
         }
@@ -60,9 +85,17 @@ enum ItemImporter {
         return []
     }
 
+    static func stampOriginatingApp() {
+        if let name = NSWorkspace.shared.frontmostApplication?.localizedName, name != "Shelf" {
+            AppState.shared.lastExternalAppName = name
+        }
+    }
+
     @discardableResult
     static func importFileURLs(_ urls: [URL], into shelf: Shelf, context: ModelContext) -> [ShelfItem] {
+        stampOriginatingApp()
         var items: [ShelfItem] = []
+        let stack = urls.count > 1 ? UUID() : nil
         for source in urls {
             let isDirectory = (try? source.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory ?? false
             let name = source.lastPathComponent
@@ -87,6 +120,7 @@ enum ItemImporter {
                 item.originatingApp = AppState.shared.lastExternalAppName
                 item.contentHash = hash
                 item.byteSize = ContentHasher.fileSize(at: stored)
+                item.stackID = stack
                 item.shelf = shelf
                 context.insert(item)
                 items.append(item)
@@ -192,6 +226,13 @@ enum ItemImporter {
         try? context.save()
         BackupService.schedule()
         return item
+    }
+
+    private static func plainText(fromRTF data: Data) -> String? {
+        if let attributed = NSAttributedString(rtf: data, documentAttributes: nil) {
+            return attributed.string
+        }
+        return String(data: data, encoding: .utf8)
     }
 
     private static func shortTitle(from text: String) -> String {

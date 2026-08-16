@@ -5,6 +5,7 @@ struct ItemCardView: View {
     @EnvironmentObject private var appState: AppState
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let item: ShelfItem
+    var stackItems: [ShelfItem]? = nil
     var compact: Bool = false
 
     @State private var image: NSImage?
@@ -22,12 +23,14 @@ struct ItemCardView: View {
         return 1
     }
 
+    private var grouped: [ShelfItem] { stackItems ?? [item] }
+
     private var dragItems: [ShelfItem] {
         if groupCount > 1, let shelf = appState.activeShelf {
             let selected = shelf.sortedItems.filter { appState.selectedItemIDs.contains($0.id) }
             if selected.count > 1 { return selected }
         }
-        return [item]
+        return grouped
     }
 
     var body: some View {
@@ -54,18 +57,28 @@ struct ItemCardView: View {
             )
         }
         .overlay(alignment: .topLeading) {
-            if groupCount > 1 {
+            if grouped.count > 1 {
                 stackBadge
+            } else if groupCount > 1 {
+                selectionBadge
             }
         }
         .overlay(alignment: .topTrailing) {
-            if item.isPinned {
-                Image(systemName: "pin.fill")
-                    .font(.system(size: 9, weight: .bold))
-                    .foregroundStyle(Color.accentColor)
-                    .padding(7)
+            HStack(spacing: 3) {
+                if item.expiresAt != nil {
+                    Image(systemName: "clock")
+                        .font(.system(size: 9, weight: .bold))
+                        .foregroundStyle(item.isExpiringSoon ? Color.orange : Design.Ink.quiet)
+                }
+                if item.isPinned {
+                    Image(systemName: "pin.fill")
+                        .font(.system(size: 9, weight: .bold))
+                        .foregroundStyle(Color.accentColor)
+                }
             }
+            .padding(7)
         }
+        .opacity(item.isExpiringSoon ? 0.72 : 1)
         .overlay(alignment: .bottom) {
             if showDescription {
                 ItemDescriptionCard(item: item)
@@ -96,6 +109,19 @@ struct ItemCardView: View {
                 .fill(Color.primary.opacity(0.08))
                 .frame(width: 22, height: 16)
                 .offset(x: 6, y: 4)
+            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                .fill(Color.accentColor)
+                .frame(width: 22, height: 16)
+            Text("\(grouped.count)")
+                .font(.system(size: 9, weight: .bold, design: .rounded))
+                .foregroundStyle(.white)
+        }
+        .padding(6)
+        .accessibilityLabel("\(grouped.count) in stack")
+    }
+
+    private var selectionBadge: some View {
+        ZStack(alignment: .topLeading) {
             RoundedRectangle(cornerRadius: 6, style: .continuous)
                 .fill(Color.accentColor)
                 .frame(width: 22, height: 16)
@@ -252,6 +278,11 @@ struct ItemCardView: View {
 
     private func select() {
         showDescription = false
+        if let stackID = item.stackID, grouped.count > 1 {
+            appState.expandedStackIDs.insert(stackID)
+            appState.selectedItemIDs = Set(grouped.map(\.id))
+            return
+        }
         let flags = NSEvent.modifierFlags
         if flags.contains(.command) || flags.contains(.shift) {
             if !StoreManager.shared.canMultiSelect, !appState.selectedItemIDs.isEmpty, !isSelected {
@@ -293,12 +324,26 @@ struct ItemCardView: View {
             Button("Quick Look") { QuickLookController.shared.preview([url]) }
         }
         Divider()
-        Button(item.isPinned ? "Unpin" : "Pin") { ShelfActions.pin(item) }
+        Button(item.isPinned ? "Unpin" : "Pin to top") { ShelfActions.pin(item) }
         Button(item.isArchived ? "Restore" : "Archive") { ShelfActions.archive(item) }
-        Menu("Move to") {
+        Menu("Put this on") {
             ForEach(DataController.shared.allShelves) { shelf in
-                Button(shelf.name) { ShelfActions.move(item, to: shelf) }
+                Button(shelf.name) {
+                    let moving = grouped
+                    ShelfActions.move(moving, to: shelf)
+                    AppState.shared.showToast("Moved to \(shelf.name)")
+                }
             }
+        }
+        Menu("Keep until") {
+            ForEach(ItemExpiryPreset.allCases, id: \.title) { preset in
+                Button(preset.title) { ShelfActions.setExpiry(item, preset.date) }
+            }
+        }
+        if grouped.count > 1, let stackID = item.stackID {
+            Button("Expand stack") { appState.expandedStackIDs.insert(stackID) }
+        } else if let stackID = item.stackID, appState.expandedStackIDs.contains(stackID) {
+            Button("Collapse stack") { appState.expandedStackIDs.remove(stackID) }
         }
         Divider()
         if let url = item.storedFileURL {

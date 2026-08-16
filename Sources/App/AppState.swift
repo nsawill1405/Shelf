@@ -18,6 +18,7 @@ final class AppState: ObservableObject {
     @Published var isPanelVisible = false
     @Published var toast: String?
     @Published var settlingItemIDs: Set<UUID> = []
+    @Published var expandedStackIDs: Set<UUID> = []
     @Published var isDropTargeted = false
     @Published var sortMode: ShelfSortMode {
         didSet { UserSettings.sortMode = sortMode }
@@ -52,6 +53,7 @@ final class AppState: ObservableObject {
     func setActiveShelf(_ shelf: Shelf) {
         activeShelfID = shelf.id
         selectedItemIDs = []
+        expandedStackIDs = []
     }
 
     func completeOnboarding() {

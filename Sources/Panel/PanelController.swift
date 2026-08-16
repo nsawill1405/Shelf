@@ -10,8 +10,6 @@ final class PanelController {
     private var panel: FloatingPanel?
     private var hostingView: NonMovingHostingView<AnyView>?
     private var keyMonitor: Any?
-    private var hideAfterDragMonitor: Any?
-
     private let frameKey = "Shelf.panel.frame"
 
     private init() {}
@@ -48,7 +46,7 @@ final class PanelController {
         panel.onBecomeKey = { [weak self] in
             self?.bringToFront()
         }
-        positionPanel(initial: true)
+        positionPanel(initial: true, preferCursorScreen: true)
         installKeyMonitor()
     }
 
@@ -74,7 +72,7 @@ final class PanelController {
 
     func show() {
         guard let panel else { return }
-        positionPanel(initial: false)
+        positionPanel(initial: false, preferCursorScreen: true)
         let target = panel.frame
         var start = target
         let offset: CGFloat = 18
@@ -142,35 +140,22 @@ final class PanelController {
     func snap(to side: PanelSnapSide) {
         guard side != .remember else { return }
         UserSettings.snapSide = side
-        guard let panel, let screen = panel.screen ?? screenContainingCursor() ?? NSScreen.main else { return }
+        guard let panel, let screen = screenContainingCursor() ?? panel.screen ?? NSScreen.main else { return }
         let visible = screen.visibleFrame
         let size = panel.frame.size
         let x = side == .left ? visible.minX + 16 : visible.maxX - size.width - 16
-        let y = min(panel.frame.minY, visible.maxY - size.height - 16)
-        let frame = NSRect(x: x, y: max(visible.minY + 16, y), width: size.width, height: size.height)
+        let y = min(max(panel.frame.minY, visible.minY + 16), visible.maxY - size.height - 16)
+        let frame = NSRect(x: x, y: y, width: size.width, height: size.height)
         NSAnimationContext.runAnimationGroup { ctx in
             ctx.duration = 0.22
             ctx.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
             panel.animator().setFrame(frame, display: true)
         }
-        saveFrame()
+        saveFrame(on: screen)
     }
 
-    func itemDidBeginExternalDrag() {
-        guard UserSettings.hideAfterDrag else { return }
-        if hideAfterDragMonitor != nil { return }
-        hideAfterDragMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseUp]) { [weak self] _ in
-            Task { @MainActor in
-                self?.finishHideAfterDrag()
-            }
-        }
-    }
-
-    private func finishHideAfterDrag() {
-        if let hideAfterDragMonitor {
-            NSEvent.removeMonitor(hideAfterDragMonitor)
-            self.hideAfterDragMonitor = nil
-        }
+    func itemDidEndExternalDrag(succeeded: Bool) {
+        guard UserSettings.hideAfterDrag, succeeded else { return }
         let location = NSEvent.mouseLocation
         if let panel, panel.frame.contains(location) { return }
         hide()
@@ -335,14 +320,17 @@ final class PanelController {
 
     // MARK: - Positioning
 
-    private func positionPanel(initial: Bool) {
+    private func positionPanel(initial: Bool, preferCursorScreen: Bool) {
         guard let panel else { return }
-        let screen = screenContainingCursor() ?? panel.screen ?? NSScreen.main ?? NSScreen.screens.first
+        let screen = (preferCursorScreen ? screenContainingCursor() : nil)
+            ?? panel.screen
+            ?? screenContainingCursor()
+            ?? NSScreen.main
+            ?? NSScreen.screens.first
         guard let screen else { return }
         let visible = screen.visibleFrame
         let size = panel.frame.size
 
-        // Utility zone: trailing edge, just under the menu bar — same place Yoink / Notification Center use.
         let margin: CGFloat = 12
         let topGap: CGFloat = 48
         switch UserSettings.snapSide {
@@ -351,6 +339,13 @@ final class PanelController {
         case .right:
             panel.setFrameOrigin(NSPoint(x: visible.maxX - size.width - margin, y: visible.maxY - size.height - topGap))
         case .remember:
+            if let saved = UserDefaults.standard.string(forKey: frameKey(for: screen)), !saved.isEmpty {
+                let frame = NSRectFromString(saved)
+                if !frame.isEmpty, frame.width >= 200, frame.height >= 200, screen.visibleFrame.intersects(frame) {
+                    panel.setFrame(frame, display: false)
+                    return
+                }
+            }
             if initial, let saved = UserDefaults.standard.string(forKey: frameKey), !saved.isEmpty {
                 let frame = NSRectFromString(saved)
                 if !frame.isEmpty, frame.width >= 200, frame.height >= 200, screensContain(frame) {
@@ -370,8 +365,20 @@ final class PanelController {
     }
 
     private func saveFrame() {
+        saveFrame(on: panel?.screen ?? screenContainingCursor())
+    }
+
+    private func saveFrame(on screen: NSScreen?) {
         guard let panel else { return }
         UserDefaults.standard.set(NSStringFromRect(panel.frame), forKey: frameKey)
+        if let screen {
+            UserDefaults.standard.set(NSStringFromRect(panel.frame), forKey: frameKey(for: screen))
+        }
+    }
+
+    private func frameKey(for screen: NSScreen) -> String {
+        let number = screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? UInt32 ?? 0
+        return "\(frameKey).\(number)"
     }
 
     private func screenContainingCursor() -> NSScreen? {
