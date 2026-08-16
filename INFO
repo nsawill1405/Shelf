@@ -1,0 +1,592 @@
+# Shelf
+
+Build a polished native macOS productivity application called **Shelf** (working title).
+
+## Product concept
+
+Shelf is a temporary workspace for digital things the user wants to keep close at hand.
+
+The problem it solves is the gap between the clipboard and the filesystem:
+
+* The clipboard is extremely temporary and generally holds one current thing.
+* Finder/folders are designed for permanent storage and require deciding where something belongs.
+* Notes apps require users to create and organise documents.
+* People often keep browser tabs open, leave files in Downloads, paste things into random notes, or repeatedly search for the same asset simply because they need it again soon.
+
+Shelf gives users a third option:
+
+**"Hold this for me."**
+
+Users should be able to quickly place text, links, images, files, PDFs, colours, code snippets and other reusable content onto a Shelf, then retrieve or drag those items into another application later.
+
+Shelf is NOT a notes app, knowledge base, Notion clone, Obsidian clone, cloud drive, or AI organiser.
+
+The app should feel like a native extension of macOS rather than somewhere users go to "work."
+
+---
+
+# Core experience
+
+The primary interface is a compact floating Shelf panel.
+
+The user can reveal it using:
+
+1. A global keyboard shortcut.
+2. A menu bar icon.
+3. Ideally, a screen-edge interaction suitable for drag-and-drop if this can be implemented robustly using supported macOS APIs.
+
+When Shelf appears, it should float above the user's current application without feeling like switching into a separate productivity app.
+
+The user can drag content from another application onto Shelf.
+
+Examples:
+
+Safari image → Shelf
+Finder file → Shelf
+Selected text → Shelf
+URL → Shelf
+PDF → Shelf
+Code snippet → Shelf
+
+Later:
+
+Shelf item → drag directly into another application.
+
+The entire interaction should feel extremely fast.
+
+---
+
+# Shelf model
+
+Users can create multiple named Shelves.
+
+Examples:
+
+Website
+School Project
+Design Assets
+Research
+Temporary
+Code
+
+A Shelf contains ordered reusable items.
+
+The UI should make Shelves feel more like small physical work surfaces/stacks than folders.
+
+Switching between Shelves must be extremely fast.
+
+There should always be a default Inbox/Quick Shelf that requires no organisation.
+
+Users should NEVER have to choose a Shelf before saving something if they don't want to.
+
+---
+
+# Supported item types
+
+Create a common `ShelfItem` model capable of representing:
+
+* Plain text
+* Rich text where practical
+* URLs
+* Images
+* Files
+* Folders
+* PDFs/documents
+* Colour values
+* Code snippets
+* Email addresses
+* Other generic file URLs
+
+Every item should contain metadata such as:
+
+* UUID
+* type
+* display title
+* creation date
+* last used date
+* originating app if available
+* original URL where appropriate
+* local stored representation
+* optional searchable text
+* optional favourite/pinned state
+
+Detect obvious item types automatically.
+
+For example:
+
+`https://apple.com` → URL
+
+`#FF5733` → colour
+
+A dropped `.png` → image
+
+A block of source code → text/code where reliably detectable
+
+Do not use generative AI for basic classification.
+
+---
+
+# Item cards
+
+Every item should have a visually appropriate representation.
+
+Examples:
+
+### Image
+
+Large thumbnail with filename underneath.
+
+### URL
+
+Page/domain icon where available, title and URL.
+
+### Text
+
+Readable preview of the first several lines.
+
+### Colour
+
+Large colour swatch with HEX/RGB representation.
+
+### File
+
+Native file icon, filename and type.
+
+### PDF
+
+Document thumbnail.
+
+The cards should feel tactile and draggable.
+
+Hover states should provide subtle visual feedback.
+
+Dragging should slightly lift/scale the object.
+
+Dropping an item should produce a satisfying but restrained spring animation.
+
+Use haptics where supported and appropriate.
+
+Do not over-animate routine actions.
+
+---
+
+# Drag and drop
+
+Drag-and-drop is the most important feature in the entire application.
+
+Prioritise making these flows excellent:
+
+External app → Shelf
+
+Shelf → external app
+
+Shelf → different Shelf
+
+Reordering within Shelf
+
+Multiple selected items → external destination
+
+Dragging a group of items should visually create a stack.
+
+Where possible, exporting a mixed group of items should preserve each item's most useful native representation.
+
+For example:
+
+* image → image/file
+* URL → URL/text
+* text → text
+* file → file URL
+
+The user should not have to manually "export" something before dragging it out.
+
+---
+
+# Floating panel
+
+Use SwiftUI for the majority of UI but use AppKit where necessary for proper macOS window behaviour.
+
+Create an `NSPanel`-based floating Shelf window.
+
+Desired behaviour:
+
+* floats above normal application windows
+* can appear without aggressively stealing context from the current app
+* remembers its position
+* can snap to left or right side of screen
+* optionally hides automatically after an item has been dragged out
+* keyboard shortcut toggles it instantly
+* supports full drag-and-drop
+* supports multiple displays
+
+Do not rely on private APIs.
+
+Keep the implementation compatible with Mac App Store sandboxing.
+
+If a planned global interaction isn't possible using supported APIs, preserve the same user experience through the floating panel/global shortcut rather than using unsupported behaviour.
+
+---
+
+# Menu bar
+
+Shelf should also be a menu bar application.
+
+Menu bar actions:
+
+* Open Shelf
+* Quick capture clipboard
+* Select active Shelf
+* Create Shelf
+* Search
+* Preferences
+* Upgrade to Shelf Pro
+* Quit
+
+---
+
+# Quick Capture
+
+Provide a command such as:
+
+`⌥ + Space`
+
+or another configurable shortcut.
+
+The shortcut opens Shelf immediately.
+
+Also support a dedicated "Capture Clipboard" shortcut that places the current clipboard contents onto the active Shelf.
+
+Avoid automatically recording the user's entire clipboard history by default.
+
+Shelf should be deliberate storage rather than surveillance-like clipboard logging.
+
+---
+
+# Search
+
+Add instantaneous local search across Shelf items.
+
+Search:
+
+* titles
+* filenames
+* text
+* URLs
+* metadata
+* extracted OCR text where available
+
+Results should appear as the user types.
+
+Allow keyboard navigation through search results.
+
+Press Return to copy/open the selected result.
+
+---
+
+# Local intelligent features
+
+Shelf should be local-first.
+
+Useful intelligence may include:
+
+* automatic item-type recognition
+* local OCR using Apple's Vision framework
+* extracting text from screenshots
+* detecting URLs
+* detecting colours
+* detecting email addresses
+* recognising common code snippets
+* Quick Look previews
+* duplicate detection
+
+Do NOT add an LLM/chatbot merely for the sake of having AI.
+
+If intelligence is added, it should disappear into the experience.
+
+---
+
+# OCR
+
+For images and screenshots, optionally run Apple's on-device text recognition.
+
+Store extracted text in the item's search metadata.
+
+Example:
+
+A user drops a screenshot containing:
+
+"Shipaton deadline September 30"
+
+Weeks later they search:
+
+`Shipaton`
+
+Shelf can return that screenshot.
+
+The user never needs to manually tag it.
+
+---
+
+# Local-first architecture
+
+User content should remain on-device by default.
+
+Store metadata using SwiftData or another appropriate native persistence layer.
+
+Store imported binary content inside the application's container/Application Support structure.
+
+Be careful with sandboxed file URLs and persistent file access. If an item needs to remain available after the originating application's drag session ends, either securely persist access where appropriate or copy the item into Shelf's own application container.
+
+Do not upload user files to a server for normal Shelf functionality.
+
+---
+
+# Main management window
+
+Although the floating Shelf is the primary interaction, provide a larger management window for:
+
+* viewing all Shelves
+* moving items
+* renaming Shelves
+* deleting/archive operations
+* searching everything
+* viewing storage usage
+* preferences
+* subscription management
+
+This window should NOT become a Notion-style editor.
+
+It is a management surface for things stored in Shelf.
+
+---
+
+# Design direction
+
+The app should look unmistakably native to modern macOS.
+
+Design principles:
+
+* translucent/material surfaces where appropriate
+* excellent typography
+* generous but efficient spacing
+* rounded item cards
+* subtle depth
+* excellent hover states
+* beautiful drag transitions
+* spring-based animations
+* responsive interactions
+* full dark/light mode support
+* excellent keyboard navigation
+* strong accessibility
+
+Avoid:
+
+* generic SaaS dashboard UI
+* huge sidebars
+* purple gradients
+* excessive glass effects
+* unnecessary onboarding slides
+* fake AI branding
+* clutter
+
+The app should feel like something Apple could plausibly have shipped as a macOS utility.
+
+---
+
+# Keyboard-first operation
+
+Power users should be capable of using nearly the entire app without a mouse.
+
+Example shortcuts:
+
+Open Shelf
+
+Capture Clipboard
+
+Search Shelf
+
+Switch Shelf
+
+New Shelf
+
+Copy selected item
+
+Delete selected item
+
+Quick Look selected item
+
+Pin item
+
+Preferences
+
+Make shortcuts configurable where practical.
+
+---
+
+# Quick Look
+
+Support native-style previewing.
+
+Press Space while an appropriate item is selected to preview it.
+
+This is especially useful for:
+
+* images
+* PDFs
+* documents
+* video
+* other files
+
+---
+
+# RevenueCat integration
+
+Integrate RevenueCat properly rather than merely adding it to satisfy hackathon requirements.
+
+Use RevenueCat to manage a **Shelf Pro** entitlement.
+
+Possible free tier:
+
+* Quick Shelf
+* core drag-and-drop
+* basic search
+* reasonable item limit
+* basic item types
+
+Possible Shelf Pro features:
+
+* unlimited Shelves
+* unlimited or substantially increased storage/items
+* OCR search
+* advanced item recognition
+* multi-item workflows
+* custom keyboard shortcuts
+* advanced organisation
+* future cross-device sync
+
+The precise pricing can be configured later.
+
+The application must continue to feel useful before purchase.
+
+Create a polished native paywall explaining the benefits of Pro.
+
+The RevenueCat entitlement state should update the application immediately.
+
+Implement Restore Purchases.
+
+Do not hard-code entitlement state.
+
+---
+
+# Privacy
+
+Shelf's positioning should include privacy.
+
+Normal user content remains local.
+
+Do not transmit clipboard contents, documents, screenshots or extracted OCR text to external services.
+
+Provide clear privacy language in Settings/onboarding.
+
+---
+
+# Onboarding
+
+Keep onboarding extremely short.
+
+Ideally three interactions:
+
+1. "Drag anything here."
+2. Show the keyboard shortcut for summoning Shelf.
+3. Let the user actually drop their first object.
+
+The onboarding itself should demonstrate the product.
+
+Avoid a long carousel explaining features.
+
+---
+
+# Delightful details
+
+Spend disproportionate effort on the moments judges will notice in a two-minute demo:
+
+* Shelf smoothly appearing beside the current app
+* dropping an image onto it
+* item physically settling into place
+* dragging that image into another app
+* instantly switching Shelves
+* dropping several things at once
+* searching text contained inside a screenshot
+* expanding/collapsing a stack
+* beautiful Quick Look behaviour
+* clean RevenueCat paywall
+
+The demo should make the app understandable with almost no narration.
+
+---
+
+# MVP priority
+
+Implement in this order.
+
+## P0 — absolutely required
+
+* native macOS application
+* Shelf data model
+* floating Shelf panel
+* menu bar item
+* global shortcut
+* multiple Shelves
+* drag files into Shelf
+* drag images into Shelf
+* drag text into Shelf
+* drag URLs into Shelf
+* drag items back out
+* persistent local storage
+* delete/reorder/move items
+* visually excellent item cards
+* search
+* RevenueCat integration
+* polished onboarding
+
+## P1 — strong competition features
+
+* local OCR
+* Quick Look
+* clipboard capture
+* multi-select
+* grouped drag-out
+* colour detection
+* code/text detection
+* excellent animations and haptics
+* configurable keyboard shortcuts
+
+## P2 — only after core UX is excellent
+
+* automatic cleanup/archive suggestions
+* duplicate detection
+* richer URL previews
+* additional metadata
+* iCloud sync
+* iPhone/iPad companion
+* more advanced smart organisation
+
+Do not implement P2 features at the expense of P0/P1 polish.
+
+---
+
+# Success criterion
+
+Shelf succeeds when this sequence feels easier than any existing workflow:
+
+1. User finds something.
+2. User throws it onto Shelf.
+3. User forgets about organisation.
+4. User needs it again.
+5. User summons Shelf.
+6. User drags it exactly where it needs to go.
+
+The experience should communicate:
+
+**Finder is where you keep things.
+Clipboard is what you're using right now.
+Shelf is everything in between.**
