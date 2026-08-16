@@ -37,6 +37,10 @@ The project uses ad-hoc code signing locally. For App Store distribution, set yo
 - **⌘C** copy · **⌘P** pin · **⌘N** new shelf · **⌘[ ⌘]** or **⌘1–9** switch shelves
 - **⌘F** — focus search
 - Menu bar icon for shelves, capture, manage, preferences, quit
+- Duplicates are detected and brought forward instead of copied again
+- Links fetch a title and favicon on this Mac
+- Inbox can suggest archiving things unused for two weeks
+- Settings can write a backup into an iCloud Drive folder
 
 ## Free vs Shelf Pro
 

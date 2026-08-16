@@ -19,6 +19,9 @@ final class AppState: ObservableObject {
     @Published var toast: String?
     @Published var settlingItemIDs: Set<UUID> = []
     @Published var isDropTargeted = false
+    @Published var sortMode: ShelfSortMode {
+        didSet { UserSettings.sortMode = sortMode }
+    }
 
     @Published var hasCompletedOnboarding: Bool {
         didSet { UserDefaults.standard.set(hasCompletedOnboarding, forKey: "hasCompletedOnboarding") }
@@ -31,6 +34,7 @@ final class AppState: ObservableObject {
     private var settleTask: Task<Void, Never>?
 
     private init() {
+        sortMode = UserSettings.sortMode
         hasCompletedOnboarding = UserDefaults.standard.bool(forKey: "hasCompletedOnboarding")
         if let raw = UserDefaults.standard.string(forKey: "activeShelfID"),
            let id = UUID(uuidString: raw) {

@@ -2,6 +2,7 @@ import SwiftUI
 import SwiftData
 
 struct ManagementView: View {
+    @EnvironmentObject private var appState: AppState
     @EnvironmentObject private var store: StoreManager
     @Query(sort: \Shelf.sortIndex) private var shelves: [Shelf]
     @Query(sort: \ShelfItem.sortIndex) private var allItems: [ShelfItem]
@@ -24,10 +25,10 @@ struct ManagementView: View {
             base = allItems
         }
         let visible = showArchived ? base : base.filter { !$0.isArchived }
-        if search.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            return visible.sorted { $0.sortIndex < $1.sortIndex }
-        }
-        return visible.filter { $0.matches(search) }
+        let filtered = search.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            ? visible
+            : visible.filter { $0.matches(search) }
+        return appState.sortMode.sort(filtered)
     }
 
     var body: some View {
@@ -137,10 +138,21 @@ struct ManagementView: View {
                         .foregroundStyle(Design.Ink.body)
                 }
                 Spacer()
+                Picker("Sort", selection: $appState.sortMode) {
+                    ForEach(ShelfSortMode.allCases) { mode in
+                        Text(mode.title).tag(mode)
+                    }
+                }
+                .labelsHidden()
+                .frame(width: 150)
                 searchBar
             }
             .padding(.horizontal, 18)
             .padding(.vertical, 14)
+
+            if !suggested.isEmpty {
+                suggestionBanner
+            }
 
             Divider()
 
@@ -179,6 +191,29 @@ struct ManagementView: View {
                 .listStyle(.inset)
             }
         }
+    }
+
+    private var suggested: [ShelfItem] {
+        ArchiveAdvisor.suggestions(from: allItems.filter { selectedShelf == nil || $0.shelf?.id == selectedShelf?.id })
+    }
+
+    private var suggestionBanner: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "archivebox")
+                .foregroundStyle(Design.Ink.body)
+            Text("\(suggested.count) unused for \(UserSettings.archiveAfterDays)+ days")
+                .font(.callout)
+                .foregroundStyle(Design.Ink.title)
+            Spacer()
+            Button("Archive suggested") {
+                ArchiveAdvisor.archive(suggested)
+            }
+            .buttonStyle(.plain)
+            .font(.callout.weight(.semibold))
+        }
+        .padding(.horizontal, 18)
+        .padding(.vertical, 8)
+        .background(Color.primary.opacity(0.05))
     }
 
     private var detailSubtitle: String {

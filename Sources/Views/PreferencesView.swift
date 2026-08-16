@@ -11,6 +11,8 @@ struct PreferencesView: View {
     @State private var hideAfterDrag = UserSettings.hideAfterDrag
     @State private var snapSide = UserSettings.snapSide
     @State private var searchAll = UserSettings.searchAllShelves
+    @State private var archiveEnabled = UserSettings.archiveSuggestionsEnabled
+    @State private var archiveDays = UserSettings.archiveAfterDays
 
     var body: some View {
         TabView {
@@ -23,7 +25,7 @@ struct PreferencesView: View {
             subscription
                 .tabItem { Label("Subscription", systemImage: "sparkles") }
         }
-        .frame(width: 520, height: 460)
+        .frame(width: 520, height: 540)
         .onChange(of: toggleShortcut) {
             guard store.canCustomizeShortcuts else {
                 toggleShortcut = ShortcutSettings.toggle
@@ -45,6 +47,8 @@ struct PreferencesView: View {
         .onChange(of: hideAfterDrag) { UserSettings.hideAfterDrag = hideAfterDrag }
         .onChange(of: snapSide) { UserSettings.snapSide = snapSide }
         .onChange(of: searchAll) { UserSettings.searchAllShelves = searchAll }
+        .onChange(of: archiveEnabled) { UserSettings.archiveSuggestionsEnabled = archiveEnabled }
+        .onChange(of: archiveDays) { UserSettings.archiveAfterDays = archiveDays }
     }
 
     private var general: some View {
@@ -65,6 +69,23 @@ struct PreferencesView: View {
                 }
                 Toggle("Hide after dragging an item out", isOn: $hideAfterDrag)
                 Toggle("Search every shelf from the panel", isOn: $searchAll)
+            }
+            Section("Organisation") {
+                Toggle("Suggest archiving unused items", isOn: $archiveEnabled)
+                Stepper("Unused after \(archiveDays) days", value: $archiveDays, in: 3...90)
+            }
+            Section("iCloud / Backup") {
+                Text("Shelf stays local-first. You can write a backup into an iCloud Drive folder so the same Mac — or another one signed into iCloud — can restore it.")
+                    .foregroundStyle(.secondary)
+                if let folder = BackupService.folderURL {
+                    LabeledContent("Backup folder", value: folder.lastPathComponent)
+                    Button("Write backup now") { Task { await BackupService.exportNow() } }
+                    Button("Choose a different folder") { BackupService.chooseFolder() }
+                    Button("Stop automatic backups") { BackupService.clearFolder() }
+                } else {
+                    Button("Choose iCloud Drive folder…") { BackupService.chooseFolder() }
+                }
+                Button("Restore from backup…") { BackupService.restore() }
             }
             Section("Storage") {
                 LabeledContent("On disk", value: ItemStorage.formattedUsage)

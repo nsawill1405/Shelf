@@ -70,6 +70,11 @@ enum ItemImporter {
 
             do {
                 let stored = alreadyInStorage(source) ? source : try ItemStorage.copyIn(source)
+                let hash = ContentHasher.hash(file: stored)
+                if let existing = DuplicateDetector.existingItem(hash: hash, in: context) {
+                    DuplicateDetector.reuse(existing, on: shelf)
+                    continue
+                }
                 let type = isDirectory ? .folder : ItemClassifier.classify(fileExtension: ext, utType: source.utType)
                 let item = ShelfItem(
                     type: type,
@@ -80,6 +85,8 @@ enum ItemImporter {
                     sortIndex: nextIndex(in: shelf)
                 )
                 item.originatingApp = AppState.shared.lastExternalAppName
+                item.contentHash = hash
+                item.byteSize = ContentHasher.fileSize(at: stored)
                 item.shelf = shelf
                 context.insert(item)
                 items.append(item)
@@ -91,7 +98,10 @@ enum ItemImporter {
                 continue
             }
         }
-        if !items.isEmpty { try? context.save() }
+        if !items.isEmpty {
+            try? context.save()
+            BackupService.schedule()
+        }
         return items
     }
 
@@ -99,6 +109,12 @@ enum ItemImporter {
     static func importImageData(_ data: Data, ext: String, into shelf: Shelf, context: ModelContext) -> ShelfItem? {
         do {
             let stored = try ItemStorage.write(data, extension: ext)
+            let hash = ContentHasher.hash(data: data)
+            if let existing = DuplicateDetector.existingItem(hash: hash, in: context) {
+                DuplicateDetector.reuse(existing, on: shelf)
+                try? FileManager.default.removeItem(at: stored)
+                return existing
+            }
             let item = ShelfItem(
                 type: .image,
                 title: "Image.\(ext)",
@@ -107,6 +123,8 @@ enum ItemImporter {
                 sortIndex: nextIndex(in: shelf)
             )
             item.originatingApp = AppState.shared.lastExternalAppName
+            item.contentHash = hash
+            item.byteSize = Int64(data.count)
             item.shelf = shelf
             context.insert(item)
             try? context.save()
@@ -123,26 +141,43 @@ enum ItemImporter {
     static func importText(_ text: String, type: ItemType? = nil, into shelf: Shelf, context: ModelContext) -> ShelfItem {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         let detected = type ?? ItemClassifier.classify(text: trimmed)
+        let hash = ContentHasher.hash(text: trimmed)
+        let urlValue = detected == .url ? trimmed : nil
+        if let existing = DuplicateDetector.existingItem(hash: hash, url: urlValue, in: context) {
+            DuplicateDetector.reuse(existing, on: shelf)
+            return existing
+        }
         let title = (detected == .text || detected == .code) ? shortTitle(from: trimmed) : trimmed
         let item = ShelfItem(
             type: detected,
             title: title,
-            sourceURL: detected == .url ? trimmed : nil,
+            sourceURL: urlValue,
             contentText: trimmed,
             colorHex: detected == .color ? ItemClassifier.detectColorHex(trimmed) : nil,
             searchableText: trimmed,
             sortIndex: nextIndex(in: shelf)
         )
         item.originatingApp = AppState.shared.lastExternalAppName
+        item.contentHash = hash
+        item.byteSize = Int64(trimmed.utf8.count)
         item.shelf = shelf
         context.insert(item)
         try? context.save()
+        if detected == .url {
+            URLPreviewService.enqueue(for: item)
+        }
+        BackupService.schedule()
         return item
     }
 
     @discardableResult
     static func importColor(_ color: NSColor, into shelf: Shelf, context: ModelContext) -> ShelfItem {
         let hex = color.hexString
+        let hash = ContentHasher.hash(text: hex)
+        if let existing = DuplicateDetector.existingItem(hash: hash, in: context) {
+            DuplicateDetector.reuse(existing, on: shelf)
+            return existing
+        }
         let item = ShelfItem(
             type: .color,
             title: hex,
@@ -151,9 +186,11 @@ enum ItemImporter {
             sortIndex: nextIndex(in: shelf)
         )
         item.originatingApp = AppState.shared.lastExternalAppName
+        item.contentHash = hash
         item.shelf = shelf
         context.insert(item)
         try? context.save()
+        BackupService.schedule()
         return item
     }
 

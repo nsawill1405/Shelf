@@ -8,6 +8,7 @@ struct ItemCardView: View {
     var compact: Bool = false
 
     @State private var image: NSImage?
+    @State private var favicon: NSImage?
     @State private var isHovering = false
     @State private var showDescription = false
     @State private var descriptionTask: Task<Void, Never>?
@@ -133,19 +134,28 @@ struct ItemCardView: View {
                 }
         case .url:
             VStack(alignment: .leading, spacing: 8) {
-                Image(systemName: "link")
-                    .font(.title3)
-                    .foregroundStyle(Color.accentColor)
-                Text(host ?? "Link")
+                if let favicon {
+                    Image(nsImage: favicon)
+                        .resizable()
+                        .interpolation(.high)
+                        .frame(width: 22, height: 22)
+                        .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
+                } else {
+                    Image(systemName: "link")
+                        .font(.title3)
+                        .foregroundStyle(Color.accentColor)
+                }
+                Text(item.pageTitle ?? host ?? "Link")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(Design.Ink.title)
-                    .lineLimit(1)
-                Text(item.sourceURL ?? item.contentText ?? "")
+                    .lineLimit(2)
+                Text(host ?? item.sourceURL ?? "")
                     .font(.caption2)
                     .foregroundStyle(Design.Ink.body)
-                    .lineLimit(2)
+                    .lineLimit(1)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .task(id: item.faviconPath) { loadFavicon() }
         case .pdf, .file, .folder, .document:
             VStack(spacing: 6) {
                 if let image {
@@ -217,6 +227,11 @@ struct ItemCardView: View {
         let raw = item.sourceURL ?? item.contentText ?? ""
         let withScheme = raw.lowercased().hasPrefix("http") ? raw : "https://\(raw)"
         return URL(string: withScheme)?.host
+    }
+
+    private func loadFavicon() {
+        guard let path = item.faviconPath else { return }
+        favicon = NSImage(contentsOf: URL(fileURLWithPath: path))
     }
 
     private func loadThumbnail() {

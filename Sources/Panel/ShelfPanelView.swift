@@ -24,11 +24,8 @@ struct ShelfPanelView: View {
             return allItems.filter { !$0.isArchived && $0.matches(q) }
         }
         let base = allItems.filter { $0.shelf?.id == activeShelf?.id && !$0.isArchived }
-        let pinned = base.filter(\.isPinned).sorted { $0.sortIndex < $1.sortIndex }
-        let rest = base.filter { !$0.isPinned }.sorted { $0.sortIndex < $1.sortIndex }
-        let ordered = pinned + rest
-        if searching { return ordered.filter { $0.matches(q) } }
-        return ordered
+        if searching { return appState.sortMode.sort(base.filter { $0.matches(q) }) }
+        return appState.sortMode.sort(base)
     }
 
     var body: some View {

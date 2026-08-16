@@ -13,6 +13,10 @@ struct ItemDescriptionCard: View {
 
             HStack(spacing: 6) {
                 Text(item.type.displayName)
+                if item.byteSize > 0 {
+                    Text("·")
+                    Text(ByteCountFormatter.string(fromByteCount: item.byteSize, countStyle: .file))
+                }
                 if let app = item.originatingApp, !app.isEmpty {
                     Text("·")
                     Text(app)

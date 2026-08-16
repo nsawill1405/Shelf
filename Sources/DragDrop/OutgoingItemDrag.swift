@@ -24,9 +24,10 @@ enum OutgoingItemDrag {
         var draggingItems: [NSDraggingItem] = []
         let sessionHolder = Session()
         let origin = view.convert(event.locationInWindow, from: nil)
+        let stackPreview = stackImage(for: payloads)
 
         for (index, payload) in payloads.enumerated() {
-            let frame = NSRect(x: origin.x - 32 + CGFloat(index) * 6, y: origin.y - 32 - CGFloat(index) * 6, width: 64, height: 64)
+            let frame = NSRect(x: origin.x - 36 + CGFloat(index) * 8, y: origin.y - 36 - CGFloat(index) * 8, width: 72, height: 72)
 
             if let path = payload.filePath {
                 let source = URL(fileURLWithPath: path)
@@ -35,9 +36,8 @@ enum OutgoingItemDrag {
                 promise.userInfo = source
                 sessionHolder.sources.append(source)
                 let dragItem = NSDraggingItem(pasteboardWriter: promise)
-                let icon = NSWorkspace.shared.icon(forFile: path)
-                icon.size = NSSize(width: 56, height: 56)
-                dragItem.setDraggingFrame(frame, contents: icon)
+                let preview = index == 0 ? stackPreview : nil
+                dragItem.setDraggingFrame(frame, contents: preview ?? NSWorkspace.shared.icon(forFile: path))
                 draggingItems.append(dragItem)
             } else if let text = payload.text, !text.isEmpty {
                 let dragItem = NSDraggingItem(pasteboardWriter: text as NSString)
@@ -50,6 +50,40 @@ enum OutgoingItemDrag {
         session = sessionHolder
         view.beginDraggingSession(with: draggingItems, event: event, source: sessionHolder)
         PanelController.shared.itemDidBeginExternalDrag()
+    }
+
+    private static func stackImage(for payloads: [DragPayload]) -> NSImage {
+        let size = NSSize(width: 88, height: 88)
+        let image = NSImage(size: size)
+        image.lockFocus()
+        let count = min(payloads.count, 3)
+        for index in (0..<count).reversed() {
+            let inset = CGFloat(index) * 6
+            let rect = NSRect(x: 8 + inset, y: 8 + inset, width: 64, height: 64)
+            NSColor.white.withAlphaComponent(0.92).setFill()
+            NSBezierPath(roundedRect: rect, xRadius: 10, yRadius: 10).fill()
+            if let path = payloads[index].filePath {
+                let icon = NSWorkspace.shared.icon(forFile: path)
+                icon.draw(in: rect.insetBy(dx: 8, dy: 8))
+            } else {
+                let text = (payloads[index].title as NSString)
+                text.draw(in: rect.insetBy(dx: 8, dy: 24), withAttributes: [
+                    .font: NSFont.systemFont(ofSize: 9),
+                    .foregroundColor: NSColor.labelColor
+                ])
+            }
+        }
+        if payloads.count > 1 {
+            let badge = NSRect(x: 58, y: 58, width: 22, height: 16)
+            NSColor.controlAccentColor.setFill()
+            NSBezierPath(roundedRect: badge, xRadius: 6, yRadius: 6).fill()
+            ("\(payloads.count)" as NSString).draw(in: badge.insetBy(dx: 4, dy: 1), withAttributes: [
+                .font: NSFont.boldSystemFont(ofSize: 10),
+                .foregroundColor: NSColor.white
+            ])
+        }
+        image.unlockFocus()
+        return image
     }
 
     final class Session: NSObject, NSDraggingSource, NSFilePromiseProviderDelegate {

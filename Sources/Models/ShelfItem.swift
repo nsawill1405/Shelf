@@ -23,6 +23,10 @@ final class ShelfItem {
     var isPinned: Bool
     var isArchived: Bool = false
     var sortIndex: Int
+    var contentHash: String? = nil
+    var byteSize: Int64 = 0
+    var pageTitle: String? = nil
+    var faviconPath: String? = nil
 
     var shelf: Shelf?
 
@@ -50,6 +54,10 @@ final class ShelfItem {
         self.isPinned = false
         self.isArchived = false
         self.sortIndex = sortIndex
+        self.contentHash = nil
+        self.byteSize = 0
+        self.pageTitle = nil
+        self.faviconPath = nil
     }
 
     var type: ItemType {
@@ -79,7 +87,8 @@ final class ShelfItem {
         guard !q.isEmpty else { return true }
         let haystack = [
             title, contentText, searchableText, sourceURL, colorHex,
-            originatingApp, type.displayName, storedFileURL?.lastPathComponent
+            originatingApp, type.displayName, storedFileURL?.lastPathComponent,
+            pageTitle
         ]
         .compactMap { $0 }
         .joined(separator: " ")
